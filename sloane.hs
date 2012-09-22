@@ -22,13 +22,12 @@ data Sloane = Sloane { keys  :: String
               deriving (Data, Typeable)
 
 sloane = cmdArgsMode $ Sloane 
-         { keys  = "SN"  &= typ "KEYS"
-                &= help "Keys of fields to print, http://oeis.org/eishelp1.html (default: SN)"
-         , all   = False &= help "Print all fields"
-         , limit = 5     &= name "n"  &= help "Limit the number of entries retrieved (default: 5)"
-         , terms = def   &= argPos 0  &= typ "SEARCH-TERMS"
+         { keys  = "SN"  &= typ "KEYS" &= help "Keys of fields to print (default: SN)"
+         , all   = False               &= help "Print all fields"
+         , limit = 5     &= name "n"   &= help "Limit the number of entries retrieved (default: 5)"
+         , terms = def   &= argPos 0   &= typ "SEARCH-TERMS"
          }
-         &= versionArg [summary "sloane 0.1.3"]
+         &= versionArg [summary "sloane 0.1.4"]
          &= summary "Search Sloane's On-Line Encyclopedia of Integer Sequences"
 
 select :: [Key] -> OEISEntries -> OEISEntries

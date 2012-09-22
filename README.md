@@ -17,8 +17,7 @@ Usage
     sloane [OPTIONS] SEARCH-TERMS
 
     Common flags:
-      -k --keys=KEYS  Keys of fields to print, http://oeis.org/eishelp1.html
-                      (default: SN)
+      -k --keys=KEYS  Keys of fields to print (default: SN)
       -a --all        Print all fields
       -n --limit=INT  Limit the number of entries retrieved (default: 5)
       -? --help       Display help message
@@ -58,8 +57,40 @@ Return at most 3 results of a free text search:
     S A006531 1,1,3,19,183,2371,38703,763099,17648823,468603091,14050842303,
     N A006531 Semiorders on n elements.
 
+Keys
+----
+
+These are the [keys used by OEIS](http://oeis.org/eishelp2.html).
+
+    I  ID number
+
+    S  1st line of unsigned sequence
+    T  2nd line of unsigned sequence
+    U  3rd line of unsigned sequence
+
+    V  1st line of signed sequence
+    W  2nd line of signed sequence
+    X  3rd line of signed sequence
+
+    N  Name
+    C  Comments
+    D  References
+    H  Links
+    F  Formula
+    e  Examples
+
+    p  Maple program
+    t  Mathematica program
+    o  Program in other language
+
+    Y  Cross-references
+    K  Keywords
+    O  Offset
+    A  Author
+    E  Extensions and errors
+
 Caveat
 ------
 
-Please use this program with moderation as not to put too much of a burden on the OEIS-server; see
+Please use this program with moderation as not to overburden the OEIS-server; see
 [OEIS' policy on searching the database](http://oeis.org/wiki/Welcome#Policy_on_Searching_the_Database).
