@@ -2,13 +2,12 @@
 
 import Prelude hiding (all)
 import System.Console.CmdArgs
-import Data.List (groupBy)
 import Data.Maybe (fromJust)
 import Control.Monad (when)
 import Network.HTTP (simpleHTTP, getRequest, getResponseBody)
 import Network.URL (importURL, exportURL, add_param)
 
-type OEISEntry = String
+type OEISEntries = String
 type Query = String
 type Key = Char
 
@@ -34,22 +33,18 @@ sloane = cmdArgsMode $ Sloane
 
 nonempty = not . null
 
-parse :: String -> [OEISEntry]
-parse = map (unlines . filter nonempty) . groupBy (\_ x -> nonempty x)
-        . map (drop 1) . reverse . drop 2 . reverse . drop 5 . lines
+select :: [Key] -> OEISEntries -> OEISEntries
+select ks = unlines . filter (\xs -> null xs || head xs `elem` ks) . lines
 
-select :: [Key] -> OEISEntry -> OEISEntry
-select ks = unlines . filter (\(k:_) -> k `elem` ks) . lines
-
-searchOEIS :: Int -> Query -> IO [OEISEntry]
+searchOEIS :: Int -> Query -> IO OEISEntries
 searchOEIS n s = do
-  parse `fmap` (simpleHTTP (getRequest url) >>= getResponseBody)
+  trim `fmap` (simpleHTTP (getRequest url) >>= getResponseBody)
     where
+      trim = unlines . map (drop 1) . reverse . drop 2 . reverse . drop 5 . lines
       url = exportURL $ oeisURL `add_param` ("n", show n) `add_param` ("q", s)
 
 main = do
   args <- cmdArgsRun sloane
-  es <- searchOEIS (limit args) . filter (`notElem` "[]") $ terms args
-  when (nonempty es) $ putStrLn ""
-  let ks = if all args then oeisKeys else keys args
-  mapM_ (putStrLn . select ks) es
+  result <- searchOEIS (limit args) . filter (`notElem` "[]") $ terms args
+  when (nonempty result) $ putStrLn ""
+  putStrLn $ if all args then result else select (keys args) result
