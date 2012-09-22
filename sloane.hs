@@ -28,7 +28,7 @@ sloane = cmdArgsMode $ Sloane
          , limit = 5     &= name "n"  &= help "Limit the number of entries retrieved (default: 5)"
          , terms = def   &= argPos 0  &= typ "SEARCH-TERMS"
          }
-         &= versionArg [summary "sloane 0.1.2"]
+         &= versionArg [summary "sloane 0.1.3"]
          &= summary "Search Sloane's On-Line Encyclopedia of Integer Sequences"
 
 select :: [Key] -> OEISEntries -> OEISEntries
@@ -44,5 +44,6 @@ searchOEIS n s = do
 main = do
   args <- cmdArgsRun sloane
   result <- searchOEIS (limit args) . filter (`notElem` "[]") $ terms args
-  when (not $ null result) $ putStrLn ""
-  putStrLn $ if all args then result else select (keys args) result
+  when (not $ null result) $ do
+    putStrLn ""
+    putStrLn $ if all args then result else select (keys args) result
