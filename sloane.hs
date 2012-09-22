@@ -31,8 +31,6 @@ sloane = cmdArgsMode $ Sloane
          &= versionArg [summary "sloane 0.1.2"]
          &= summary "Search Sloane's On-Line Encyclopedia of Integer Sequences"
 
-nonempty = not . null
-
 select :: [Key] -> OEISEntries -> OEISEntries
 select ks = unlines . filter (\xs -> null xs || head xs `elem` ks) . lines
 
@@ -46,5 +44,5 @@ searchOEIS n s = do
 main = do
   args <- cmdArgsRun sloane
   result <- searchOEIS (limit args) . filter (`notElem` "[]") $ terms args
-  when (nonempty result) $ putStrLn ""
+  when (not $ null result) $ putStrLn ""
   putStrLn $ if all args then result else select (keys args) result
