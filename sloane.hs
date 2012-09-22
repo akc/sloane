@@ -1,5 +1,9 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
+-- Copyright   : (c) Anders Claesson 2012
+-- License     : BSD-style
+-- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
+
 import Prelude hiding (all)
 import System.Console.CmdArgs
 import Data.Maybe (fromJust)
