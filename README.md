@@ -19,6 +19,7 @@ Usage
     Common flags:
       -k --keys=KEYS  Keys of fields to print (default: SN)
       -a --all        Print all fields
+      -u --url        Print urls of found entries
       -n --limit=INT  Limit the number of entries retrieved (default: 5)
       -? --help       Display help message
       -V --version    Print version information
