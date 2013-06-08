@@ -19,7 +19,7 @@ Usage
     Common flags:
       -k --keys=KEYS  Keys of fields to print (default: SN)
       -a --all        Print all fields
-      -u --url        Print urls of found entries
+      -u --url        Only print urls of found entries
       -n --limit=INT  Limit the number of entries retrieved (default: 5)
       -? --help       Display help message
       -V --version    Print version information
@@ -57,6 +57,10 @@ Return at most 3 results of a free text search:
 
     S A006531 1,1,3,19,183,2371,38703,763099,17648823,468603091,14050842303,
     N A006531 Semiorders on n elements.
+
+Look at those 3 results in firefox:
+
+    $ firefox `sloane --url -n3 "(2+2)-free posets"`
 
 Keys
 ----
