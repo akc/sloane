@@ -1,71 +1,91 @@
-sloane
-======
+---
+title: SLOANE(1) Sloane User Manual | Version 0.1.6
+date: October 8, 2013
+---
 
-A command line interface to Sloane's [On-Line Encyclopedia of Integer Sequences (OEIS)](http://oeis.org)
+# NAME
 
-Install
--------
+sloane - a command line interface to Sloane's
+On-Line Encyclopedia of Integer Sequences (OEIS) <http://oeis.org>
 
-    $ cabal install sloane
+# SYNOPSIS
 
-Usage
------
+sloane [*options*] *search-terms*
 
-    $ sloane --help
-    Search Sloane's On-Line Encyclopedia of Integer Sequences
+# DESCRIPTION
 
-    sloane [OPTIONS] SEARCH-TERMS
+The sloane command searches Sloane's On-Line Encyclopedia of Integer
+Sequences (OEIS). The search terms are typically the leading term of a
+sequence, but can be a sequence id (its A-number) or even arbitrary words.
 
-    Common flags:
-      -k --keys=KEYS  Keys of fields to print (default: SN)
-      -a --all        Print all fields
-      -u --url        Only print urls of found entries
-      -n --limit=INT  Limit the number of entries retrieved (default: 5)
-      -? --help       Display help message
-      -V --version    Print version information
+# OPTIONS
 
-Examples
---------
+-k --keys=KEYS
+:   Keys of fields to print (default: SN)
+
+-a --all
+:   Print all fields
+
+-u --url
+:   Only print urls of found entries
+
+-n --limit=INT
+:   Limit the number of entries retrieved (default: 5)
+
+-? --help
+:   Display a short help message
+
+-V --version
+:   Print version information
+
+# EXAMPLES
 
 Search for entries matching a sequence:
 
-    $ sloane 1,3,19,183,2371,38703
+~~~~~
+sloane 1,3,19,183,2371,38703
 
-    S A006531 1,1,3,19,183,2371,38703,763099,17648823,468603091,14050842303,
-    N A006531 Semiorders on n elements.
+S A006531 1,1,3,19,183,2371,38703,763099,17648823,468603091,14050842303,
+N A006531 Semiorders on n elements.
+~~~~~
 
 Show the sequence, name, comments, and formula fields of the sequence whose A-number is A006531:
 
-    $ sloane -kSNCF id:A006531
+~~~~~
+sloane -kSNCF id:A006531
 
-    S A006531 1,1,3,19,183,2371,38703,763099,17648823,468603091,14050842303,
-    N A006531 Semiorders on n elements.
-    C A006531 Labeled semiorders on n elements: (1+3) and (2+2)-free posets. - Detlef Pauly (dettodet(AT)yahoo.de), Dec 27 2002
-    F A006531 O.g.f.: Sum_{n>=1} (2*n)!/(n+1)! * x^n / Product_{k=0..n} (1+k*x). [From Paul D. Hanna, Jul 20 2011]
-    F A006531 E.g.f.: C(1-exp(-x)), where C(x) = (1 - sqrt(1 - 4*x)) / (2*x) is the ordinary g.f. for the Catalan numbers A000108.
-    F A006531 a(n) = sum( S(n, k) * k! * M(k-1), k=1..n), S(n, k): Stirling number of the second kind, M(n): Motzkin number, A001006. - Detlef Pauly, Jun 06 2002
+S A006531 1,1,3,19,183,2371,38703,763099,17648823,468603091,14050842303,
+N A006531 Semiorders on n elements.
+C A006531 Labeled semiorders on n elements: (1+3) and (2+2)-free posets. - Detlef Pauly (dettodet(AT)yahoo.de), Dec 27 2002
+F A006531 O.g.f.: Sum_{n>=1} (2*n)!/(n+1)! * x^n / Product_{k=0..n} (1+k*x). [From Paul D. Hanna, Jul 20 2011]
+F A006531 E.g.f.: C(1-exp(-x)), where C(x) = (1 - sqrt(1 - 4*x)) / (2*x) is the ordinary g.f. for the Catalan numbers A000108.
+F A006531 a(n) = sum( S(n, k) * k! * M(k-1), k=1..n), S(n, k): Stirling number of the second kind, M(n): Motzkin number, A001006. - Detlef Pauly, Jun 06 2002
+~~~~~
 
 Return at most 3 results of a free text search:
 
-    $ sloane -n3 "(2+2)-free posets"
+~~~~~
+sloane -n3 "(2+2)-free posets"
 
-    S A079144 1,1,3,19,207,3451,81663,2602699,107477247,5581680571,356046745023,
-    N A079144 Number of labeled interval orders on n elements: (2+2)-free posets.
+S A079144 1,1,3,19,207,3451,81663,2602699,107477247,5581680571,356046745023,
+N A079144 Number of labeled interval orders on n elements: (2+2)-free posets.
 
-    S A022493 1,1,2,5,15,53,217,1014,5335,31240,201608,1422074,10886503,89903100,
-    N A022493 Number of linearized chord diagrams of degree n; also number of nonisomorphic interval orders on n unlabeled points.
+S A022493 1,1,2,5,15,53,217,1014,5335,31240,201608,1422074,10886503,89903100,
+N A022493 Number of linearized chord diagrams of degree n; also number of nonisomorphic interval orders on n unlabeled points.
 
-    S A006531 1,1,3,19,183,2371,38703,763099,17648823,468603091,14050842303,
-    N A006531 Semiorders on n elements.
+S A006531 1,1,3,19,183,2371,38703,763099,17648823,468603091,14050842303,
+N A006531 Semiorders on n elements.
+~~~~~
 
 Look at those 3 results in firefox:
 
-    $ firefox `sloane --url -n3 "(2+2)-free posets"`
+~~~~~
+firefox `sloane --url -n3 "(2+2)-free posets"`
+~~~~~
 
-Keys
-----
+# KEYS
 
-These are the [keys used by OEIS](http://oeis.org/eishelp2.html).
+These are the keys used by OEIS <http://oeis.org/eishelp2.html>.
 
     I  ID number
 
@@ -94,8 +114,19 @@ These are the [keys used by OEIS](http://oeis.org/eishelp2.html).
     A  Author
     E  Extensions and errors
 
-Caveat
-------
+# NOTES
 
-Please use this program with moderation as not to overburden the OEIS-server; see
-[OEIS' policy on searching the database](http://oeis.org/wiki/Welcome#Policy_on_Searching_the_Database).
+Please use this program with moderation as not to overburden the
+OEIS-server; see OEIS' policy on searching the database:
+<http://oeis.org/wiki/Welcome#Policy_on_Searching_the_Database>.
+
+# SEE ALSO
+
+The sloane source code and may be downloaded from
+<http://github.com/akc/sloane>. There is also a Haskell library
+interface to OEIS, <http://hackage.haskell.org/package/oeis>, by Brent
+Yorgey.
+
+# AUTHOR
+
+Anders Claesson
