@@ -3,6 +3,7 @@
 -- |
 -- Copyright   : Anders Claesson 2012, 2013
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
+-- License     : BSD-3
 --
 
 import Prelude hiding (all)
