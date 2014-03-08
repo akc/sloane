@@ -14,6 +14,7 @@ import Network.HTTP (simpleHTTP, getRequest, getResponseBody)
 import Network.URL (importURL, exportURL, add_param)
 
 type OEISEntries = String
+type ANumber = String
 type Query = String
 type Key = Char
 
@@ -42,12 +43,11 @@ sloane = cmdArgsMode $ Sloane
 select :: [Key] -> OEISEntries -> OEISEntries
 select ks = unlines . filter (\xs -> null xs || head xs `elem` ks) . lines
 
+aNumbers :: OEISEntries -> [ANumber]
+aNumbers es = [ words ids !! 1 | ids@(_:_) <- lines (select "I" es) ]
+
 urls :: OEISEntries -> String
-urls es = unlines $ do
-            ids <- lines $ select "I" es
-            guard $ not (null ids)
-            let aNum = words ids !! 1
-            return $ oeisHost ++ "/" ++ aNum
+urls = unlines . map ((oeisHost ++ "/") ++ ) . aNumbers
 
 searchOEIS :: Int -> Query -> IO OEISEntries
 searchOEIS n s =
@@ -58,7 +58,8 @@ searchOEIS n s =
 
 main = do
   args <- cmdArgsRun sloane
-  entries <- searchOEIS (limit args) . filter (`notElem` "[]") $ terms args
+  let query = filter (`notElem` "[{}]") $ terms args
+  entries <- searchOEIS (limit args) query
   let pick = if all args then id else select (keys args)
   unless (null entries) $
          putStrLn . pack $ '\n' : (if url args then urls else pick) entries
