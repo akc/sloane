@@ -30,7 +30,7 @@ sequence, but can be a sequence id (its A-number) or even arbitrary words.
 :   Only print urls of found entries
 
 -n --limit=INT
-:   Limit the number of entries retrieved (default: 5)
+:   Retrieve at most this many entries (default: 5)
 
 -? --help
 :   Display a short help message
@@ -115,7 +115,7 @@ OEIS-server; see OEIS' policy on searching the database:
 # SEE ALSO
 
 The sloane source code may be downloaded from
-<http://src.akc.is/sloane>.
+<https://github.com/akc/sloane>.
 
 # AUTHOR
 

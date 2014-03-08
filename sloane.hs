@@ -34,7 +34,7 @@ sloane = cmdArgsMode $ Sloane
   { keys  = "SN"  &= typ "KEYS" &= help "Keys of fields to print (default: SN)"
   , all   = False &= name "a"   &= help "Print all fields"
   , url   = False &= name "u"   &= help "Print urls of found entries"
-  , limit = 5     &= name "n"   &= help "Limit the number of entries retrieved (default: 5)"
+  , limit = 5     &= name "n"   &= help "Retrieve at most this many entries (default: 5)"
   , terms = def   &= argPos 0   &= typ "SEARCH-TERMS"
   }
   &= versionArg [summary "sloane 1.1"]
