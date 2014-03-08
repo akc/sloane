@@ -10,7 +10,7 @@ import Data.ByteString.Char8 (putStrLn, putStr, pack, empty)
 import System.Console.ANSI
 import System.Console.CmdArgs
 import Data.Maybe (fromJust)
-import Control.Monad (unless, guard, forM_)
+import Control.Monad (unless, guard)
 import Network.HTTP (simpleHTTP, getRequest, getResponseBody)
 import Network.URL (importURL, exportURL, add_param)
 
@@ -52,19 +52,18 @@ urls = unlines . map ((oeisHost ++ "/") ++ ) . aNumbers
 
 searchOEIS :: Int -> Query -> IO OEISEntries
 searchOEIS n s =
-  trim `fmap` (simpleHTTP (getRequest url) >>= getResponseBody)
-    where
-      trim = map (drop 1) . reverse . drop 2 . reverse . drop 5 . lines
-      url = exportURL $ oeisURL `add_param` ("n", show n) `add_param` ("q", s)
+    trim `fmap` (simpleHTTP (getRequest url) >>= getResponseBody)
+  where
+    trim = map (drop 1) . reverse . drop 2 . reverse . drop 5 . lines
+    url = exportURL $ oeisURL `add_param` ("n", show n) `add_param` ("q", s)
 
 put = putStr . pack
 putLn = putStrLn . pack
 newline = putStrLn empty
 
 putEntries :: OEISEntries -> IO ()
-putEntries es =
-  forM_ es $ \line ->
-      case words line of
+putEntries = mapM_ $ \line ->
+    case words line of
         [] -> newline
         (key:aNum:rest) -> do
             setSGR [ SetColor Foreground Dull Green ]
