@@ -41,7 +41,7 @@ sloane = cmdArgsMode $ Sloane
   &= summary "Search Sloane's On-Line Encyclopedia of Integer Sequences"
 
 select :: [Key] -> OEISEntries -> OEISEntries
-select ks = unlines . filter (\xs -> null xs || head xs `elem` ks) . lines
+select ks = unlines . filter (\line -> null line || head line `elem` ks) . lines
 
 aNumbers :: OEISEntries -> [ANumber]
 aNumbers es = [ words ids !! 1 | ids@(_:_) <- lines (select "I" es) ]
