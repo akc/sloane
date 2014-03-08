@@ -5,11 +5,12 @@
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 -- License     : BSD-3
 --
-import Prelude hiding (all, putStrLn)
-import Data.ByteString.Char8 (putStrLn, pack)
+import Prelude hiding (all, putStrLn, putStr)
+import Data.ByteString.Char8 (putStrLn, putStr, pack, empty)
+import System.Console.ANSI
 import System.Console.CmdArgs
 import Data.Maybe (fromJust)
-import Control.Monad (unless, guard)
+import Control.Monad (unless, guard, forM_)
 import Network.HTTP (simpleHTTP, getRequest, getResponseBody)
 import Network.URL (importURL, exportURL, add_param)
 
@@ -37,7 +38,7 @@ sloane = cmdArgsMode $ Sloane
   , limit = 5 &= name "n" &= help "Retrieve at most this many entries (default: 5)"
   , terms = def &= argPos 0 &= typ "SEARCH-TERMS"
   }
-  &= versionArg [summary "sloane 1.1"]
+  &= versionArg [summary "sloane 1.2"]
   &= summary "Search Sloane's On-Line Encyclopedia of Integer Sequences"
 
 select :: Keys -> OEISEntries -> OEISEntries
@@ -46,8 +47,8 @@ select ks = filter (\line -> null line || head line `elem` ks)
 aNumbers :: OEISEntries -> ANumbers
 aNumbers es = [ words ids !! 1 | ids@(_:_) <- select "I" es ]
 
-urls :: OEISEntries -> [String]
-urls = map ((oeisHost ++ "/") ++ ) . aNumbers
+urls :: OEISEntries -> String
+urls = unlines . map ((oeisHost ++ "/") ++ ) . aNumbers
 
 searchOEIS :: Int -> Query -> IO OEISEntries
 searchOEIS n s =
@@ -56,10 +57,31 @@ searchOEIS n s =
       trim = map (drop 1) . reverse . drop 2 . reverse . drop 5 . lines
       url = exportURL $ oeisURL `add_param` ("n", show n) `add_param` ("q", s)
 
+put = putStr . pack
+putLn = putStrLn . pack
+newline = putStrLn empty
+
+putEntries :: OEISEntries -> IO ()
+putEntries es =
+  forM_ es $ \line ->
+      case words line of
+        [] -> newline
+        (key:aNum:rest) -> do
+            setSGR [ SetColor Foreground Dull Green ]
+            put key
+            setSGR [ SetColor Foreground Dull Yellow ]
+            put $ ' ' : aNum
+            setSGR []
+            put $ ' ' : unwords rest ++ "\n"
+
 main = do
   args <- cmdArgsRun sloane
+  let pick = if all args then id else select (keys args)
   let query = filter (`notElem` "[{}]") $ terms args
   hits <- searchOEIS (limit args) query
-  let pick = if all args then id else select (keys args)
-  unless (null hits) $
-      putStrLn . pack $ '\n' : unlines ((if url args then urls else pick) hits)
+  unless (null hits) $ do
+      newline
+      if url args
+          then put (urls hits)
+          else putEntries (pick hits)
+      newline
