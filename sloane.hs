@@ -9,6 +9,7 @@ import Prelude hiding (all, putStrLn, putStr)
 import Data.ByteString.Char8 (putStrLn, putStr, pack, empty)
 import System.Console.ANSI
 import System.Console.CmdArgs
+import System.Console.Terminal.Size (Window(..), size)
 import Data.Maybe (fromJust)
 import Control.Monad (unless, guard)
 import Network.HTTP (simpleHTTP, getRequest, getResponseBody)
@@ -38,7 +39,7 @@ sloane = cmdArgsMode $ Sloane
   , limit = 5 &= name "n" &= help "Retrieve at most this many entries (default: 5)"
   , terms = def &= argPos 0 &= typ "SEARCH-TERMS"
   }
-  &= versionArg [summary "sloane 1.2"]
+  &= versionArg [summary "sloane 1.3"]
   &= summary "Search Sloane's On-Line Encyclopedia of Integer Sequences"
 
 select :: Keys -> OEISEntries -> OEISEntries
@@ -57,12 +58,27 @@ searchOEIS n s =
     trim = map (drop 1) . reverse . drop 2 . reverse . drop 5 . lines
     url = exportURL $ oeisURL `add_param` ("n", show n) `add_param` ("q", s)
 
+cropSeq :: Int -> String -> String
+cropSeq maxLen = reverse . dropWhile (/= ',') . reverse . take maxLen
+
+cropLine :: Int -> String -> String
+cropLine maxLen s
+    | maxLen >= length s = s
+    | otherwise          = take (maxLen-2) s ++ ".."
+
+getWidth :: IO Int
+getWidth = do
+    win <- size
+    case win of
+        Nothing  -> error "Can't get width of terminal"
+        Just win -> return $ width win
+
 put = putStr . pack
 putLn = putStrLn . pack
 newline = putStrLn empty
 
-putEntries :: OEISEntries -> IO ()
-putEntries = mapM_ $ \line ->
+putEntries :: Int -> OEISEntries -> IO ()
+putEntries width = mapM_ $ \line ->
     case words line of
         [] -> newline
         (key:aNum:rest) -> do
@@ -71,16 +87,18 @@ putEntries = mapM_ $ \line ->
             setSGR [ SetColor Foreground Dull Yellow ]
             put $ ' ' : aNum
             setSGR []
-            put $ ' ' : unwords rest ++ "\n"
+            let crop = if key == "S" then cropSeq else cropLine
+            put $ ' ' : crop width (unwords rest) ++ "\n"
 
 main = do
-  args <- cmdArgsRun sloane
-  let pick = if all args then id else select (keys args)
-  let query = filter (`notElem` "[{}]") $ terms args
-  hits <- searchOEIS (limit args) query
-  unless (null hits) $ do
-      newline
-      if url args
-          then put (urls hits)
-          else putEntries (pick hits)
-      newline
+    args  <- cmdArgsRun sloane
+    ncols <- getWidth
+    let pick = if all args then id else select (keys args)
+    let query = filter (`notElem` "[{}]") $ terms args
+    hits <- searchOEIS (limit args) query
+    unless (null hits) $ do
+        newline
+        if url args
+            then put (urls hits)
+            else putEntries (ncols - 10) (pick hits)
+        newline

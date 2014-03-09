@@ -1,5 +1,5 @@
 Name:                sloane
-Version:             1.2
+Version:             1.3
 Synopsis:            A command line interface to Sloane's On-Line Encyclopedia of Integer Sequences
 Description:         A command line interface to Sloane's On-Line Encyclopedia of Integer Sequences.
                      For usage see <http://github.com/akc/sloane>.
@@ -21,4 +21,4 @@ source-repository head
 Executable sloane
   Main-is:             sloane.hs
   Build-depends:       base >=3 && <5, cmdargs >=0.9, HTTP >=4000.0.9, url >=2,
-                       bytestring >=0.9, ansi-terminal >=0.6
+                       bytestring >=0.9, ansi-terminal >=0.6, terminal-size >=0.2
