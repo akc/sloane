@@ -39,7 +39,7 @@ sloane = cmdArgsMode $ Sloane
   , limit = 5 &= name "n" &= help "Retrieve at most this many entries (default: 5)"
   , terms = def &= argPos 0 &= typ "SEARCH-TERMS"
   }
-  &= versionArg [summary "sloane 1.4"]
+  &= versionArg [summary "sloane 1.5"]
   &= summary "Search Sloane's On-Line Encyclopedia of Integer Sequences"
 
 select :: Keys -> OEISEntries -> OEISEntries
@@ -67,11 +67,10 @@ cropLine maxLen s
     | otherwise          = take (maxLen-2) s ++ ".."
 
 getWidth :: IO Int
-getWidth = do
-    win <- size
-    case win of
-        Nothing  -> error "Can't get width of terminal"
-        Just win -> return $ width win
+getWidth = f `fmap` size
+  where
+    f Nothing    = maxBound
+    f (Just win) = width win
 
 put = putStr . pack
 putLn = putStrLn . pack
@@ -92,6 +91,7 @@ putEntries width = mapM_ $ \line ->
 
 main = do
     args  <- cmdArgsRun sloane
+    ncols <- getWidth
     let pick = if all args then id else select (keys args)
     let query = filter (`notElem` "[{}]") $ terms args
     hits <- searchOEIS (limit args) query
@@ -99,7 +99,5 @@ main = do
         newline
         if url args
             then put (urls hits)
-            else do
-                ncols <- getWidth
-                putEntries (ncols - 10) (pick hits)
+            else putEntries (ncols - 10) (pick hits)
         newline

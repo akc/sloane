@@ -1,5 +1,5 @@
 Name:                sloane
-Version:             1.4
+Version:             1.5
 Synopsis:            A command line interface to Sloane's On-Line Encyclopedia of Integer Sequences
 Description:         A command line interface to Sloane's On-Line Encyclopedia of Integer Sequences.
                      For usage see <http://github.com/akc/sloane>.
