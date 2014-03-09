@@ -39,7 +39,7 @@ sloane = cmdArgsMode $ Sloane
   , limit = 5 &= name "n" &= help "Retrieve at most this many entries (default: 5)"
   , terms = def &= argPos 0 &= typ "SEARCH-TERMS"
   }
-  &= versionArg [summary "sloane 1.3"]
+  &= versionArg [summary "sloane 1.4"]
   &= summary "Search Sloane's On-Line Encyclopedia of Integer Sequences"
 
 select :: Keys -> OEISEntries -> OEISEntries
@@ -92,7 +92,6 @@ putEntries width = mapM_ $ \line ->
 
 main = do
     args  <- cmdArgsRun sloane
-    ncols <- getWidth
     let pick = if all args then id else select (keys args)
     let query = filter (`notElem` "[{}]") $ terms args
     hits <- searchOEIS (limit args) query
@@ -100,5 +99,7 @@ main = do
         newline
         if url args
             then put (urls hits)
-            else putEntries (ncols - 10) (pick hits)
+            else do
+                ncols <- getWidth
+                putEntries (ncols - 10) (pick hits)
         newline
