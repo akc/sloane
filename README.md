@@ -119,4 +119,4 @@ The sloane source code may be downloaded from
 
 # AUTHOR
 
-Anders Claesson
+Anders Claesson <http://akc.is>
