@@ -1,5 +1,5 @@
 Name:                sloane
-Version:             1.5
+Version:             1.5.1
 Synopsis:            A command line interface to Sloane's On-Line Encyclopedia of Integer Sequences
 Description:         A command line interface to Sloane's On-Line Encyclopedia of Integer Sequences.
                      For usage see <http://github.com/akc/sloane>.
@@ -9,8 +9,8 @@ License-file:        LICENSE
 Author:              Anders Claesson
 Maintainer:          anders.claesson@gmail.com
 Category:            Math
-Build-type:          Simple
-Extra-Source-Files:  README.md
+Build-type:          Custom
+Extra-Source-Files:  README.md sloane.1
 
 Cabal-version:       >=1.6
 

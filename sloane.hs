@@ -39,7 +39,7 @@ sloane = cmdArgsMode $ Sloane
   , limit = 5 &= name "n" &= help "Retrieve at most this many entries (default: 5)"
   , terms = def &= argPos 0 &= typ "SEARCH-TERMS"
   }
-  &= versionArg [summary "sloane 1.5"]
+  &= versionArg [summary "sloane 1.5.1"]
   &= summary "Search Sloane's On-Line Encyclopedia of Integer Sequences"
 
 select :: Keys -> OEISEntries -> OEISEntries
