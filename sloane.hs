@@ -28,7 +28,7 @@ data Sloane = Sloane { keys  :: String
                      , all   :: Bool
                      , url   :: Bool
                      , limit :: Int
-                     , terms :: String
+                     , terms :: [String]
                      }
               deriving (Data, Typeable)
 
@@ -37,9 +37,9 @@ sloane = cmdArgsMode $ Sloane
   , all  = False &= name "a"   &= help "Print all fields"
   , url  = False &= name "u"   &= help "Print urls of found entries"
   , limit = 5 &= name "n" &= help "Retrieve at most this many entries (default: 5)"
-  , terms = def &= argPos 0 &= typ "SEARCH-TERMS"
+  , terms = def &= args &= typ "SEARCH-TERMS"
   }
-  &= versionArg [summary "sloane 1.5.1"]
+  &= versionArg [summary "sloane 1.6"]
   &= summary "Search Sloane's On-Line Encyclopedia of Integer Sequences"
 
 select :: Keys -> OEISEntries -> OEISEntries
@@ -90,10 +90,10 @@ putEntries width = mapM_ $ \line ->
             put $ ' ' : crop width (unwords rest) ++ "\n"
 
 main = do
-    args  <- cmdArgsRun sloane
+    args <- cmdArgsRun sloane
     ncols <- getWidth
     let pick = if all args then id else select (keys args)
-    let query = filter (`notElem` "[{}]") $ terms args
+    let query = unwords $ terms args
     hits <- searchOEIS (limit args) query
     unless (null hits) $ do
         newline
