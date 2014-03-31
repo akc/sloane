@@ -10,7 +10,7 @@ import Data.ByteString.Char8 (putStrLn, putStr, pack, empty)
 import System.Console.ANSI
 import System.Console.CmdArgs
 import System.Console.Terminal.Size (Window(..), size)
-import Data.Maybe (fromJust)
+import Data.Maybe (maybe, fromJust)
 import Control.Monad (unless, guard)
 import Network.HTTP (simpleHTTP, getRequest, getResponseBody)
 import Network.URL (importURL, exportURL, add_param)
@@ -62,15 +62,10 @@ cropSeq :: Int -> String -> String
 cropSeq maxLen = reverse . dropWhile (/= ',') . reverse . take maxLen
 
 cropLine :: Int -> String -> String
-cropLine maxLen s
-    | maxLen >= length s = s
-    | otherwise          = take (maxLen-2) s ++ ".."
+cropLine maxLen s = if maxLen < length s then take (maxLen-2) s ++ ".." else s
 
 getWidth :: IO Int
-getWidth = f `fmap` size
-  where
-    f Nothing    = maxBound
-    f (Just win) = width win
+getWidth = maybe maxBound width `fmap` size
 
 put = putStr . pack
 putLn = putStrLn . pack
