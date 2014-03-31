@@ -6,7 +6,7 @@
 nix-env -i sloane
 ```
 
-## Other Linux distributions
+## Others
 
 ```
 cabal install sloane
