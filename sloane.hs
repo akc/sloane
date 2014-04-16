@@ -62,11 +62,14 @@ searchOEIS n s = trim `fmap` get uri
     trim = map (drop 1) . reverse . drop 2 . reverse . drop 5 . lines
     uri = oeisURL ++ "&" ++ urlEncodeVars [("n", show n), ("q", s)]
 
+cropStr :: (Int -> String -> String) -> Int -> String -> String
+cropStr f maxLen s = if maxLen < length s then f maxLen s else s
+
 cropSeq :: Int -> String -> String
-cropSeq maxLen = reverse . dropWhile (/= ',') . reverse . take maxLen
+cropSeq = cropStr $ \maxLen -> reverse . dropWhile (/= ',') . reverse . take maxLen
 
 cropLine :: Int -> String -> String
-cropLine maxLen s = if maxLen < length s then take (maxLen-2) s ++ ".." else s
+cropLine = cropStr $ \maxLen s -> take (maxLen-2) s ++ ".."
 
 getWidth :: IO Int
 getWidth = maybe maxBound width `fmap` size
