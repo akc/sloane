@@ -12,8 +12,8 @@ import System.Console.CmdArgs
 import System.Console.Terminal.Size (Window(..), size)
 import Data.Maybe (maybe, fromJust)
 import Control.Monad (unless, guard)
-import Network.HTTP (simpleHTTP, getRequest, getResponseBody)
-import Network.URL (importURL, exportURL, add_param)
+import Network.HTTP
+import Network.URI (parseURI)
 
 type OEISEntries = [String]
 type ANumbers = [String]
@@ -21,7 +21,7 @@ type Query = String
 type Keys = String
 
 oeisHost = "http://oeis.org"
-oeisURL  = fromJust . importURL $ oeisHost ++ "/search?fmt=text"
+oeisURL  = oeisHost ++ "/search?fmt=text"
 oeisKeys = "ISTUVWXNDHFYAOEeptoKC"
 
 data Sloane = Sloane { keys  :: String
@@ -39,7 +39,7 @@ sloane = cmdArgsMode $ Sloane
   , limit = 5 &= name "n" &= help "Retrieve at most this many entries (default: 5)"
   , terms = def &= args &= typ "SEARCH-TERMS"
   }
-  &= versionArg [summary "sloane 1.6"]
+  &= versionArg [summary "sloane 1.6.1"]
   &= summary "Search Sloane's On-Line Encyclopedia of Integer Sequences"
 
 select :: Keys -> OEISEntries -> OEISEntries
@@ -51,12 +51,16 @@ aNumbers es = [ words ids !! 1 | ids@(_:_) <- select "I" es ]
 urls :: OEISEntries -> String
 urls = unlines . map ((oeisHost ++ "/") ++ ) . aNumbers
 
+get :: HStream b => String -> IO b
+get uri = simpleHTTP (defaultGETRequest_ uri') >>= getResponseBody
+  where
+    uri' = fromJust $ parseURI uri
+
 searchOEIS :: Int -> Query -> IO OEISEntries
-searchOEIS n s =
-    trim `fmap` (simpleHTTP (getRequest url) >>= getResponseBody)
+searchOEIS n s = trim `fmap` get uri
   where
     trim = map (drop 1) . reverse . drop 2 . reverse . drop 5 . lines
-    url = exportURL $ oeisURL `add_param` ("n", show n) `add_param` ("q", s)
+    uri = oeisURL ++ "&" ++ urlEncodeVars [("n", show n), ("q", s)]
 
 cropSeq :: Int -> String -> String
 cropSeq maxLen = reverse . dropWhile (/= ',') . reverse . take maxLen
