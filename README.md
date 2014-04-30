@@ -1,6 +1,6 @@
 ---
-title: SLOANE(1) Sloane User Manual | Version 1.7
-date: April 20, 2014
+title: SLOANE(1) Sloane User Manual | Version 1.7.1
+date: April 30, 2014
 ---
 
 # NAME
@@ -34,7 +34,7 @@ the OEIS. Assuming that *FILE* contains one sequence per line,
     sloane <FILE
 
 returns the subset of the sequences in *FILE* that are in the OEIS. To
-also lookup the names of those sequences in the OEIS one could, for
+also look-up the names of those sequences in the OEIS one could, for
 instance, run
 
     sloane <FILE | xargs -L1 --verbose sloane
@@ -44,20 +44,20 @@ unwanted, pipe the output through cat.
 
 # OPTIONS
 
--k --keys=KEYS
-:   Keys of fields to print (default: SN)
-
 -a --all
 :   Print all fields
 
--u --url
-:   Print urls of found entries (but nothing else)
+-k --keys=KEYS
+:   Keys of fields to print (default: SN)
+
+-n --limit=INT
+:   Fetch at most this many entries (default: 5)
 
 --update
 :   Update the local sequence cache
 
--n --limit=INT
-:   Fetch at most this many entries (default: 5)
+-u --url
+:   Print URLs of found entries (but nothing else)
 
 -? --help
 :   Display a short help message
@@ -87,13 +87,13 @@ The next example returns at most 3 results of a free text search:
 
     sloane -n3 "(2+2)-free posets"
 
-To view the full entries of these 3 results in a browser (e.g., firefox)
+To view the full entries of these 3 results in a browser (e.g., Firefox)
 one can use the url option:
 
     firefox `sloane --url -n3 "(2+2)-free posets"`
 
-In the final example we use sloane to use the local cache to filter out
-sequences from the standard input that are in the OEIS:
+In the final example the local cache is used to filter out sequences
+from the standard input that are in the OEIS:
 
     sloane <<END
     1,2,3,6,11,23,47,106,235           # Comma separated integers

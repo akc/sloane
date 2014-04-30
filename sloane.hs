@@ -64,10 +64,10 @@ sloane = cmdArgsMode $ Sloane
   , keys = "SN" &= typ "KEYS" &= help "Keys of fields to print (default: SN)"
   , limit = 5 &= name "n" &= help "Fetch at most this many entries (default: 5)"
   , update = False &= help "Update the local sequence cache"
-  , url = False &= name "u" &= help "Print urls of found entries"
+  , url = False &= name "u" &= help "Print URLs of found entries"
   , terms = def &= args &= typ "SEARCH-TERMS"
   }
-  &= versionArg [summary "sloane 1.7"]
+  &= versionArg [summary "sloane 1.7.1"]
   &= summary "Search Sloane's On-Line Encyclopedia of Integer Sequences"
 
 select :: Keys -> OEISEntries -> OEISEntries
