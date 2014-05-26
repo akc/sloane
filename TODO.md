@@ -1,3 +1,14 @@
+# Better command line argument handling
+
+Use optparse-applicative or docopt. In any case "sloane [options]
+search-terms" should be replaced with something more specific.
+
+sloane # Expects input from stdin.
+sloane (--version | --help | --update)
+sloane [-a | --all | -k KEYS | --keys=KEYS | --url] [-n INT] search-terms
+
+Deprecate '-u', '-?', '-V', '--limit' (and '--keys'?)
+
 # Superseeker like functionality
 
 Implement the transformations in <https://oeis.org/transforms.txt> in
