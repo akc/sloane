@@ -132,6 +132,9 @@ putEntries width = mapM_ $ \line ->
 isInfixOf :: B.ByteString -> BL.ByteString -> Bool
 isInfixOf q = not . null . Search.indices q
 
+dropPreamble :: BL.ByteString -> BL.ByteString
+dropPreamble = BL.unlines . drop 4 . BL.lines
+
 readCache :: FilePath -> IO BL.ByteString
 readCache home = do
     let name = home </> cacheDir </> cacheFile
@@ -143,7 +146,7 @@ readCache home = do
             let week = 60*60*24*7
             let expired = c `diffUTCTime` m > 2*week
             when expired $ putErr msgOldCache
-            GZip.decompress `fmap` BL.readFile name
+            (dropPreamble . GZip.decompress) `fmap` BL.readFile name
         else
             error msgNoCache
 
