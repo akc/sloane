@@ -12,7 +12,7 @@ import System.Directory
 type URL = String
 
 data Config = Config
-    { name      :: String
+    { nameVer   :: String
     , home      :: FilePath
     , sloaneDir :: FilePath
     , sloaneDB  :: FilePath
@@ -29,7 +29,7 @@ defaultConfig = do
     h <- getHomeDirectory
     let dsloane = h </> ".sloane"
     return Config
-        { name      = "sloane 2.0.0"
+        { nameVer   = "sloane 2.0.0"
         , home      = h
         , sloaneDir = dsloane
         , sloaneDB  = dsloane </> "sloane.db"

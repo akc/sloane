@@ -22,8 +22,10 @@ source-repository head
 
 Executable sloane
   Main-is:             sloane.hs
-  Other-Modules:       Sloane.Config
-                       Sloane.DB
+  Other-Modules:       Sloane.DB
+                       Sloane.Config
+                       Sloane.GF
+                       Sloane.Transform
   ghc-options:         -Wall
   Build-depends:       base >=3 && <5,
                        containers >=0.5,

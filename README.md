@@ -1,6 +1,6 @@
 ---
 title: SLOANE(1) Sloane User Manual | Version 2.0.0
-date: 29 Dec 2014
+date: 2 Jan 2015
 ---
 
 # NAME
@@ -10,8 +10,13 @@ On-Line Encyclopedia of Integer Sequences <http://oeis.org>
 
 # SYNOPSIS
 
-    sloane [-a|--all] [-k KEYS] [-n N] [--url] [--local] [--filter]
-           [--invert] [--update] [--version] [TERMS...]
+sloane [-a|--all] [-k KEYS] [-n N] [--url] [--local] [TERMS...]
+
+sloane [--filter] [--invert]
+
+sloane [--transform NAME] [--list-transforms]
+
+sloane [--update] [--version] [--help]
 
 # DESCRIPTION
 
@@ -54,10 +59,10 @@ this is unwanted, pipe the output through cat or less:
 -a, --all
 :   Print all fields
 
--k *keys*
+-k *KEYS*
 :   Keys of fields to print (default: SN)
 
--n *entries*
+-n *N*
 :   Fetch at most this many entries (default: 5)
 
 --url
@@ -74,6 +79,15 @@ this is unwanted, pipe the output through cat or less:
 :   Return sequences *not* in the database. This option has no effect
     unless `--filter` is also set.
 
+--transform *NAME*
+:   Apply the named transform to the input sequence. If the resulting
+    sequence is integral print it to stdout; else print nothing.
+    Most of the transforms and their names are taken from
+    <https://oeis.org/transforms.txt>.
+
+--list-transforms
+:   List the names of all transforms.
+
 --update
 :   Update the local database.
 
@@ -81,7 +95,7 @@ this is unwanted, pipe the output through cat or less:
 :   Print version information.
 
 --help
-:   Display a short help message
+:   Briefly describe the available options.
 
 # EXAMPLES
 

@@ -3,6 +3,8 @@
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 -- License     : BSD-3
 --
+
+import           Data.List                    (intercalate)
 import           Data.Monoid
 import           Data.Text                    (Text)
 import qualified Data.Text                    as T
@@ -14,6 +16,7 @@ import           Options.Applicative
 import           Sloane.Config
 import           Sloane.DB                    (DB)
 import qualified Sloane.DB                    as DB
+import           Sloane.Transform
 
 type URL = String
 type Seq = Text
@@ -26,6 +29,8 @@ data Options = Options
     , local   :: Bool     -- Lookup in local DB
     , filtr   :: Bool     -- Filter out sequences in local DB
     , invert  :: Bool     -- Return sequences NOT in DB
+    , transform :: String -- Apply the named transform
+    , listTransforms :: Bool -- List the names of all transforms
     , update  :: Bool     -- Updated local DB
     , version :: Bool     -- Show version info
     , terms   :: [String] -- Search terms
@@ -49,10 +54,25 @@ grepDB :: Options -> DB -> DB
 grepDB opts = DB.take n . DB.grep (T.pack q)
   where
     n = limit opts
-    q = unwords $ terms opts
+    q = intercalate "," (terms opts)
+
+applyTransform :: Options -> String -> IO ()
+applyTransform opts tname =
+    case lookupTranform tname of
+      Nothing -> error "No transform with that name"
+      Just f  -> case f $$ input of
+                   [] -> return ()
+                   cs -> putStrLn (showSeq cs)
+  where
+    tr c  = if c `elem` ";," then ' ' else c
+    input = map read (words (map tr (unwords (terms opts))))
+
 
 dropComment :: Text -> Text
 dropComment = T.takeWhile (/= '#')
+
+showSeq :: [Integer] -> String
+showSeq = intercalate "," . map show
 
 mkSeq :: Text -> Seq
 mkSeq = T.intercalate (T.pack ",") . T.words . clean . dropComment
@@ -99,6 +119,14 @@ optionsParser = hiddenHelp <*> (Options
         ( long "invert"
        <> help ("Return sequences NOT in the database;"
             ++ " only relevant when used with --filter") )
+    <*> strOption
+        ( long "transform"
+       <> metavar "NAME"
+       <> value ""
+       <> help ("Apply the named transform to input sequence"))
+    <*> switch
+        ( long "list-transforms"
+       <> help "List the names of all transforms" )
     <*> switch
         ( long "update"
        <> help "Update the local database" )
@@ -115,16 +143,19 @@ search f opts cfg = f opts cfg >>= put
 
 main :: IO ()
 main = do
-    let pprefs = prefs showHelpOnError
+    let pprefs = prefs mempty
     let pinfo = info optionsParser fullDesc
     let usage = handleParseResult . Failure
          $ parserFailure pprefs pinfo ShowHelpText mempty
     opts <- customExecParser pprefs pinfo
+    let tname = transform opts
     let sloane
-         | version opts = putStrLn . name
+         | version opts = putStrLn . nameVer
          | update opts = DB.update
+         | listTransforms opts = const $ mapM_ (putStrLn . name) transforms
          | filtr opts = \c -> DB.read c >>= filterDB opts >>= mapM_ IO.putStrLn
          | null (terms opts) = const usage
+         | not (null tname) = const $ applyTransform opts tname
          | local opts = search (\o cfg -> grepDB o <$> DB.read cfg) opts
-         | otherwise  = search oeisLookup opts
+         | otherwise = search oeisLookup opts
     defaultConfig >>= sloane
