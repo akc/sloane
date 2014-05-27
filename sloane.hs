@@ -1,31 +1,40 @@
-{-# LANGUAGE DeriveDataTypeable #-}
-
 -- |
 -- Copyright   : Anders Claesson 2012-2014
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 -- License     : BSD-3
 --
-import Prelude hiding (all)
-import qualified Data.ByteString.Char8       as B
-import qualified Data.ByteString.Lazy.Char8  as BL
-import qualified Data.ByteString.Lazy.Search as Search
-import qualified Codec.Compression.GZip      as GZip
-import System.IO (stdin, stderr)
-import System.Directory
-import System.FilePath ((</>))
-import System.Console.ANSI
-import System.Console.CmdArgs
-import System.Console.Terminal.Size (Window(..), size)
-import Data.Time (getCurrentTime, diffUTCTime)
-import Data.Maybe (maybe, fromJust)
-import Control.Monad (when, unless)
-import Network.HTTP
-import Network.URI (parseURI)
+import qualified Codec.Compression.GZip       as GZip
+import           Control.Monad                (unless, when)
+import qualified Data.ByteString.Char8        as B
+import qualified Data.ByteString.Lazy.Char8   as BL
+import qualified Data.ByteString.Lazy.Search  as Search
+import           Data.Maybe                   (fromJust, maybe)
+import           Data.Time                    (diffUTCTime, getCurrentTime)
+import           Network.HTTP
+import           Network.URI                  (parseURI)
+import           Options.Applicative
+import           System.Console.ANSI
+import           System.Console.Terminal.Size (Window (..), size)
+import           System.Directory
+import           System.FilePath              ((</>))
+import           System.IO                    (stderr, stdin)
 
 type OEISEntries = [String]
 type ANumbers = [String]
 type Query = String
 type Keys = String
+
+data Args = Args
+    { all    :: Bool
+    , keys   :: String
+    , limit  :: Int
+    , update :: Bool
+    , url    :: Bool
+    , ver    :: Bool
+    , terms  :: [String]
+    }
+
+version   = "sloane 1.8"
 
 oeisHost  = "http://oeis.org/"
 oeisURL   = oeisHost ++ "search?fmt=text"
@@ -46,29 +55,9 @@ msgNoCache = unlines
     [ "No sequence cache found. You need to run \"sloane --update\""
     ]
 msgOldCache = unlines
-    [ "The sequence cache is more than two weeks old"
+    [ "The sequence cache is more than 100 days old"
     , "You may want to run \"sloane --update\""
     ]
-
-data Sloane = Sloane { all    :: Bool
-                     , keys   :: String
-                     , limit  :: Int
-                     , update :: Bool
-                     , url    :: Bool
-                     , terms  :: [String]
-                     }
-              deriving (Data, Typeable)
-
-sloane = cmdArgsMode $ Sloane
-  { all = False &= name "a" &= help "Print all fields"
-  , keys = "SN" &= typ "KEYS" &= help "Keys of fields to print (default: SN)"
-  , limit = 5 &= name "n" &= help "Fetch at most this many entries (default: 5)"
-  , update = False &= help "Update the local sequence cache"
-  , url = False &= name "u" &= help "Print URLs of found entries"
-  , terms = def &= args &= typ "SEARCH-TERMS"
-  }
-  &= versionArg [summary "sloane 1.7.1"]
-  &= summary "Search Sloane's On-Line Encyclopedia of Integer Sequences"
 
 select :: Keys -> OEISEntries -> OEISEntries
 select ks = filter (\line -> null line || head line `elem` ks)
@@ -143,8 +132,8 @@ readCache home = do
         then do
             c <- getCurrentTime
             m <- getModificationTime name
-            let week = 60*60*24*7
-            let expired = c `diffUTCTime` m > 2*week
+            let day = 60*60*24
+            let expired = c `diffUTCTime` m > 100*day
             when expired $ putErr msgOldCache
             (dropPreamble . GZip.decompress) `fmap` BL.readFile name
         else
@@ -164,20 +153,39 @@ filterSeqs home = do
     cache <- readCache home
     B.getContents >>= mapM_ B.putStrLn . filter (`isInfixOf` cache) . seqs
 
-main = do
-    home <- getHomeDirectory
-    args <- cmdArgsRun sloane
-    let query = unwords $ terms args
-    case (update args, null query) of
-        (True, _) -> updateCache home
-        (_, True) -> filterSeqs home
-        _         -> do
-            ncols <- getWidth
-            hits  <- searchOEIS (limit args) query
-            let pick = if all args then id else select (keys args)
-            unless (null hits) $ do
-                newline
-                if url args
-                    then put (urls hits)
-                    else putEntries (ncols - 10) (pick hits)
-                newline
+args :: Parser Args
+args = Args
+    <$> switch (short 'a' <> long "all" <> help "Print all fields")
+    <*> strOption
+        ( short 'k'
+       <> metavar "KEYS"
+       <> value "SN"
+       <> help "Keys of fields to print [default: SN]" )
+    <*> option
+        ( short 'n'
+       <> metavar "N"
+       <> value 5
+       <> help "Fetch at most this many entries [default: 5]" )
+    <*> switch (long "update" <> help "Update the local sequence cache")
+    <*> switch (long "url" <> help "Print URLs of found entries")
+    <*> switch (hidden <> long "version")
+    <*> many (argument str (metavar "TERMS..."))
+
+sloane :: Args -> IO ()
+sloane (Args all keys n update url True terms) = put version >> newline
+sloane (Args all keys n True   url ver  terms) = getHomeDirectory >>= updateCache
+sloane (Args all keys n update url ver  []   ) = getHomeDirectory >>= filterSeqs
+sloane (Args all keys n update url ver  terms) = do
+    ncols <- getWidth
+    hits  <- searchOEIS n (unwords terms)
+    let pick = if all then id else select keys
+    unless (null hits) $ do
+        newline
+        if url
+            then put (urls hits)
+            else putEntries (ncols - 10) (pick hits)
+        newline
+
+main = execParser (info (h <*> args) (fullDesc <> header version)) >>= sloane
+  where
+    h = abortOption ShowHelpText $ hidden <> long "help"

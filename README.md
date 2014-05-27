@@ -1,6 +1,6 @@
 ---
-title: SLOANE(1) Sloane User Manual | Version 1.7.1
-date: April 30, 2014
+title: SLOANE(1) Sloane User Manual | Version 1.8
+date: May 27, 2014
 ---
 
 # NAME
@@ -10,7 +10,9 @@ On-Line Encyclopedia of Integer Sequences <http://oeis.org>
 
 # SYNOPSIS
 
-sloane [*options*] *search-terms*
+sloane [-a | --all | -k *keys* | --url] [-n *entries*] *search-terms* ...  
+sloane (--update | --version | --help)  
+sloane
 
 # DESCRIPTION
 
@@ -39,31 +41,31 @@ instance, run
 
     sloane <FILE | xargs -L1 --verbose sloane
 
-Sloane crops long lines to fit the widths of the terminal. If this is
-unwanted, pipe the output through cat.
+Sloane normally crops long lines to fit the widths of the terminal. If
+this is unwanted, pipe the output through cat.
 
 # OPTIONS
 
--a --all
+-a, --all
 :   Print all fields
 
--k --keys=KEYS
+-k *keys*
 :   Keys of fields to print (default: SN)
 
--n --limit=INT
+--url
+:   Print URLs of found entries (but nothing else)
+
+-n *entries*
 :   Fetch at most this many entries (default: 5)
 
 --update
 :   Update the local sequence cache
 
--u --url
-:   Print URLs of found entries (but nothing else)
-
--? --help
-:   Display a short help message
-
--V --version
+--version
 :   Print version information
+
+--help
+:   Display a short help message
 
 # EXAMPLES
 
@@ -81,16 +83,16 @@ the name (N) fields. To override the default one can use the keys
 option. For instance, the following search shows the sequence, name,
 comments, and formula fields of the sequence whose A-number is A006531:
 
-    sloane --keys=SNCF id:A006531
+    sloane -k SNCF id:A006531
 
 The next example returns at most 3 results of a free text search:
 
-    sloane -n3 "(2+2)-free posets"
+    sloane -n 3 "(2+2)-free posets"
 
 To view the full entries of these 3 results in a browser (e.g., Firefox)
 one can use the url option:
 
-    firefox `sloane --url -n3 "(2+2)-free posets"`
+    firefox `sloane --url -n 3 "(2+2)-free posets"`
 
 In the final example the local cache is used to filter out sequences
 from the standard input that are in the OEIS:
