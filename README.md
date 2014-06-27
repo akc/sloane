@@ -12,7 +12,7 @@ On-Line Encyclopedia of Integer Sequences <http://oeis.org>
 
 sloane [-a | --all | -k *keys* | --url] [-n *entries*] *search-terms* ...  
 sloane (--update | --version | --help)  
-sloane
+sloane [--invert]
 
 # DESCRIPTION
 
@@ -28,15 +28,15 @@ words. See the **EXAMPLES** section.
 
 If no search terms are specified the standard input is read
 line-by-line. In this mode the search is done locally against a
-downloaded list of known sequences. If the sequence is in the OEIS, then
+downloaded list of known sequences. If the sequence is in OEIS, then
 it is returned to the standard output; if not, it is ignored. This way
 sloane can quickly filter out the sequences from the input that are in
-the OEIS. Assuming that *FILE* contains one sequence per line,
+OEIS. Assuming that *FILE* contains one sequence per line,
 
     sloane <FILE
 
-returns the subset of the sequences in *FILE* that are in the OEIS. To
-also look-up the names of those sequences in the OEIS one could, for
+returns the subset of the sequences in *FILE* that are in OEIS. To
+also look-up the names of those sequences in OEIS one could, for
 instance, run
 
     sloane <FILE | xargs -L1 --verbose sloane
@@ -57,6 +57,9 @@ this is unwanted, pipe the output through cat.
 
 -n *entries*
 :   Fetch at most this many entries (default: 5)
+
+--invert
+:   When used as a filter, return sequences *not* in OEIS
 
 --update
 :   Update the local sequence cache
@@ -95,7 +98,7 @@ one can use the url option:
     firefox `sloane --url -n 3 "(2+2)-free posets"`
 
 In the final example the local cache is used to filter out sequences
-from the standard input that are in the OEIS:
+from the standard input that are in OEIS:
 
     sloane <<END
     1,2,3,6,11,23,47,106,235           # Comma separated integers

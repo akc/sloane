@@ -28,6 +28,7 @@ data Args = Args
     { all    :: Bool
     , keys   :: String
     , limit  :: Int
+    , invert :: Bool
     , update :: Bool
     , url    :: Bool
     , ver    :: Bool
@@ -148,10 +149,12 @@ seqs = filter (not . B.null) . map mkSeq . B.lines
     tr c  = if c `elem` ";," then ' ' else c
     clean = B.filter (\c -> B.elem c (B.pack " 0123456789-"))
 
-filterSeqs :: FilePath -> IO ()
-filterSeqs home = do
+filterSeqs :: Bool -> FilePath -> IO ()
+filterSeqs invert home = do
     cache <- readCache home
-    B.getContents >>= mapM_ B.putStrLn . filter (`isInfixOf` cache) . seqs
+    B.getContents >>= mapM_ B.putStrLn . filter (`f` cache) . seqs
+  where
+    f s = (if invert then not else id) . isInfixOf s
 
 args :: Parser Args
 args = Args
@@ -166,19 +169,22 @@ args = Args
        <> metavar "N"
        <> value 5
        <> help "Fetch at most this many entries [default: 5]" )
+    <*> switch
+        ( long "invert"
+       <> help "When used as a filter, return sequences NOT in OEIS" )
     <*> switch (long "update" <> help "Update the local sequence cache")
     <*> switch (long "url" <> help "Print URLs of found entries")
     <*> switch (hidden <> long "version")
     <*> many (argument str (metavar "TERMS..."))
 
 sloane :: Args -> IO ()
-sloane (Args all keys n update url True terms) = put version >> newline
-sloane (Args all keys n True   url ver  terms) = getHomeDirectory >>= updateCache
-sloane (Args all keys n update url ver  []   ) = getHomeDirectory >>= filterSeqs
-sloane (Args all keys n update url ver  terms) = do
+sloane (Args a keys n v update url True ts) = put version >> newline
+sloane (Args a keys n v True   url ver  ts) = getHomeDirectory >>= updateCache
+sloane (Args a keys n v update url ver  []) = getHomeDirectory >>= filterSeqs v
+sloane (Args a keys n v update url ver  ts) = do
     ncols <- getWidth
-    hits  <- searchOEIS n (unwords terms)
-    let pick = if all then id else select keys
+    hits  <- searchOEIS n (unwords ts)
+    let pick = if a then id else select keys
     unless (null hits) $ do
         newline
         if url
