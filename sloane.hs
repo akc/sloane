@@ -35,7 +35,7 @@ data Args = Args
     , terms  :: [String]
     }
 
-version   = "sloane 1.8"
+name = "sloane 1.8.1"
 
 oeisHost  = "http://oeis.org/"
 oeisURL   = oeisHost ++ "search?fmt=text"
@@ -119,9 +119,6 @@ putEntries width = mapM_ $ \line ->
             let crop = if key == "S" then cropSeq else cropLine
             put $ ' ' : crop width (unwords rest) ++ "\n"
 
-isInfixOf :: B.ByteString -> BL.ByteString -> Bool
-isInfixOf q = not . null . Search.indices q
-
 dropPreamble :: BL.ByteString -> BL.ByteString
 dropPreamble = BL.unlines . drop 4 . BL.lines
 
@@ -152,9 +149,8 @@ seqs = filter (not . B.null) . map mkSeq . B.lines
 filterSeqs :: Bool -> FilePath -> IO ()
 filterSeqs invert home = do
     cache <- readCache home
-    B.getContents >>= mapM_ B.putStrLn . filter (`f` cache) . seqs
-  where
-    f s = (if invert then not else id) . isInfixOf s
+    let f q = (if invert then id else not) . null $ Search.indices q cache
+    B.getContents >>= mapM_ B.putStrLn . filter f . seqs
 
 args :: Parser Args
 args = Args
@@ -178,7 +174,7 @@ args = Args
     <*> many (argument str (metavar "TERMS..."))
 
 sloane :: Args -> IO ()
-sloane (Args a keys n v update url True ts) = put version >> newline
+sloane (Args a keys n v update url True ts) = put name >> newline
 sloane (Args a keys n v True   url ver  ts) = getHomeDirectory >>= updateCache
 sloane (Args a keys n v update url ver  []) = getHomeDirectory >>= filterSeqs v
 sloane (Args a keys n v update url ver  ts) = do
@@ -192,6 +188,6 @@ sloane (Args a keys n v update url ver  ts) = do
             else putEntries (ncols - 10) (pick hits)
         newline
 
-main = execParser (info (h <*> args) (fullDesc <> header version)) >>= sloane
+main = execParser (info (h <*> args) (fullDesc <> header name)) >>= sloane
   where
     h = abortOption ShowHelpText $ hidden <> long "help"
