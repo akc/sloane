@@ -37,13 +37,12 @@ data Args = Args
     Bool     -- version
     [String] -- search terms
 
-name, oeisHost, oeisURL, oeisKeys, cacheDir, cacheFile, cacheURL :: String
+name, oeisHost, oeisURL, cacheDir, cacheFile, cacheURL :: String
 
 name = "sloane 1.8.2"
 
 oeisHost  = "http://oeis.org/"
 oeisURL   = oeisHost ++ "search?fmt=text"
-oeisKeys  = "ISTUVWXNDHFYAOEeptoKC"
 
 cacheDir  = ".sloane"
 cacheFile = "stripped.gz"
