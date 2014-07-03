@@ -4,11 +4,14 @@
 -- License     : BSD-3
 --
 import qualified Codec.Compression.GZip       as GZip
-import           Control.Monad                (unless, when)
-import qualified Data.ByteString.Char8        as B
-import qualified Data.ByteString.Lazy.Char8   as BL
-import qualified Data.ByteString.Lazy.Search  as Search
-import           Data.Maybe                   (fromJust, maybe)
+import           Control.Monad                (unless, when, liftM2)
+import qualified Data.ByteString              as B
+import qualified Data.ByteString.Lazy         as BL
+import           Data.Text                    (Text)
+import qualified Data.Text                    as T
+import qualified Data.Text.IO                 as IO
+import           Data.Text.Encoding           (decodeUtf8)
+import           Data.Maybe                   (fromJust)
 import           Data.Time                    (diffUTCTime, getCurrentTime)
 import           Network.HTTP
 import           Network.URI                  (parseURI)
@@ -17,7 +20,7 @@ import           System.Console.ANSI
 import           System.Console.Terminal.Size (Window (..), size)
 import           System.Directory
 import           System.FilePath              ((</>))
-import           System.IO                    (stderr, stdin)
+import           System.IO                    (stderr)
 
 type OEISEntries = [String]
 type ANumbers = [String]
@@ -25,17 +28,18 @@ type Query = String
 type Keys = String
 
 data Args = Args
-    { all    :: Bool
-    , keys   :: String
-    , limit  :: Int
-    , invert :: Bool
-    , update :: Bool
-    , url    :: Bool
-    , ver    :: Bool
-    , terms  :: [String]
-    }
+    Bool     -- a: Print all fields?
+    String   -- k: Keys of fields to print
+    Int      -- n: Fetch at most this many entries
+    Bool     -- invert: Return sequences NOT in OEIS
+    Bool     -- update: Update the local sequence cache
+    Bool     -- url: Print URLs of found entries
+    Bool     -- version
+    [String] -- search terms
 
-name = "sloane 1.8.1"
+name, oeisHost, oeisURL, oeisKeys, cacheDir, cacheFile, cacheURL :: String
+
+name = "sloane 1.8.2"
 
 oeisHost  = "http://oeis.org/"
 oeisURL   = oeisHost ++ "search?fmt=text"
@@ -44,6 +48,8 @@ oeisKeys  = "ISTUVWXNDHFYAOEeptoKC"
 cacheDir  = ".sloane"
 cacheFile = "stripped.gz"
 cacheURL  = oeisHost ++ cacheFile
+
+msgDownloadingCache, msgCacheIsUpToDate, msgNoCache, msgOldCache :: String
 
 msgDownloadingCache = unlines
     [ "Downloading " ++ cacheURL
@@ -74,15 +80,6 @@ get uri = simpleHTTP (defaultGETRequest_ uri') >>= getResponseBody
   where
     uri' = fromJust $ parseURI uri
 
-updateCache :: FilePath -> IO ()
-updateCache home = do
-    let dir = home </> cacheDir
-    createDirectoryIfMissing False dir
-    put msgDownloadingCache
-    cache <- get cacheURL
-    B.writeFile (dir </> cacheFile) cache
-    put msgCacheIsUpToDate
-
 searchOEIS :: Int -> Query -> IO OEISEntries
 searchOEIS n s = trim `fmap` get uri
   where
@@ -102,14 +99,20 @@ cropLine = cropStr $ \maxLen s -> take (maxLen-2) s ++ ".."
 getWidth :: IO Int
 getWidth = maybe maxBound width `fmap` size
 
-put = B.putStr . B.pack
-putErr = B.hPutStr stderr . B.pack
-newline = B.putStrLn B.empty
+put :: String -> IO ()
+put = IO.putStr . T.pack
+
+putErr :: String -> IO ()
+putErr = IO.hPutStr stderr . T.pack
+
+newline :: IO ()
+newline = IO.putStrLn T.empty
 
 putEntries :: Int -> OEISEntries -> IO ()
-putEntries width = mapM_ $ \line ->
+putEntries ncols = mapM_ $ \line -> do
     case words line of
-        [] -> newline
+        []  -> return ()
+        [w] -> put w -- Should never be reached
         (key:aNum:rest) -> do
             setSGR [ SetColor Foreground Dull Green ]
             put key
@@ -117,40 +120,48 @@ putEntries width = mapM_ $ \line ->
             put $ ' ' : aNum
             setSGR []
             let crop = if key == "S" then cropSeq else cropLine
-            put $ ' ' : crop width (unwords rest) ++ "\n"
+            put $ ' ' : crop ncols (unwords rest)
+    newline
 
-dropPreamble :: BL.ByteString -> BL.ByteString
-dropPreamble = BL.unlines . drop 4 . BL.lines
+updateCache :: FilePath -> IO ()
+updateCache home = do
+    createDirectoryIfMissing False dir
+    put msgDownloadingCache
+    get cacheURL >>= BL.writeFile (dir </> cacheFile)
+    put msgCacheIsUpToDate
+  where
+    dir = home </> cacheDir
 
-readCache :: FilePath -> IO BL.ByteString
+readCache :: FilePath -> IO Text
 readCache home = do
-    let name = home </> cacheDir </> cacheFile
-    updated <- doesFileExist name
+    updated <- doesFileExist fname
     if updated
         then do
-            c <- getCurrentTime
-            m <- getModificationTime name
-            let day = 60*60*24
-            let expired = c `diffUTCTime` m > 100*day
-            when expired $ putErr msgOldCache
-            (dropPreamble . GZip.decompress) `fmap` BL.readFile name
+            age <- liftM2 diffUTCTime getCurrentTime (getModificationTime fname)
+            when (age > 100*day) $ putErr msgOldCache
+            (dropPreamble . decompress) `fmap` BL.readFile fname
         else
             error msgNoCache
+  where
+    day = 60*60*24
+    fname = home </> cacheDir </> cacheFile
+    decompress = decodeUtf8 . B.concat . BL.toChunks . GZip.decompress
+    dropPreamble = T.unlines . drop 4 . T.lines
 
-seqs :: B.ByteString -> [B.ByteString]
-seqs = filter (not . B.null) . map mkSeq . B.lines
+seqs :: Text -> [Text]
+seqs = filter (not . T.null) . map mkSeq . T.lines
   where
     mkSeq = normalize . dropComment
-    dropComment = B.takeWhile (/= '#')
-    normalize   = B.intercalate (B.pack ",") . B.words . clean . B.map tr
+    dropComment = T.takeWhile (/= '#')
+    normalize   = T.intercalate (T.pack ",") . T.words . clean . T.map tr
     tr c  = if c `elem` ";," then ' ' else c
-    clean = B.filter (\c -> B.elem c (B.pack " 0123456789-"))
+    clean = T.filter (`elem` " 0123456789-")
 
 filterSeqs :: Bool -> FilePath -> IO ()
 filterSeqs invert home = do
     cache <- readCache home
-    let f q = (if invert then id else not) . null $ Search.indices q cache
-    B.getContents >>= mapM_ B.putStrLn . filter f . seqs
+    let f q = (if invert then not else id) (q `T.isInfixOf` cache)
+    IO.getContents >>= mapM_ IO.putStrLn . filter f . seqs
 
 args :: Parser Args
 args = Args
@@ -174,10 +185,10 @@ args = Args
     <*> many (argument str (metavar "TERMS..."))
 
 sloane :: Args -> IO ()
-sloane (Args a keys n v update url True ts) = put name >> newline
-sloane (Args a keys n v True   url ver  ts) = getHomeDirectory >>= updateCache
-sloane (Args a keys n v update url ver  []) = getHomeDirectory >>= filterSeqs v
-sloane (Args a keys n v update url ver  ts) = do
+sloane (Args _ _    _ _   _    _   True _ ) = put name >> newline
+sloane (Args _ _    _ _   True _   _    _ ) = getHomeDirectory >>= updateCache
+sloane (Args _ _    _ inv _    _   _    []) = getHomeDirectory >>= filterSeqs inv
+sloane (Args a keys n _   _    url _    ts) = do
     ncols <- getWidth
     hits  <- searchOEIS n (unwords ts)
     let pick = if a then id else select keys
@@ -188,6 +199,7 @@ sloane (Args a keys n v update url ver  ts) = do
             else putEntries (ncols - 10) (pick hits)
         newline
 
+main :: IO ()
 main = execParser (info (h <*> args) (fullDesc <> header name)) >>= sloane
   where
     h = abortOption ShowHelpText $ hidden <> long "help"
