@@ -5,7 +5,6 @@
 --
 import qualified Codec.Compression.GZip       as GZip
 import           Control.Monad                (unless, when, liftM2)
-import qualified Data.ByteString              as B
 import qualified Data.ByteString.Lazy         as BL
 import           Data.Text                    (Text)
 import qualified Data.Text                    as T
@@ -144,7 +143,7 @@ readCache home = do
   where
     day = 60*60*24
     fname = home </> cacheDir </> cacheFile
-    decompress = decodeUtf8 . B.concat . BL.toChunks . GZip.decompress
+    decompress = decodeUtf8 . BL.toStrict . GZip.decompress
     dropPreamble = T.unlines . drop 4 . T.lines
 
 seqs :: Text -> [Text]
