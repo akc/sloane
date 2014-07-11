@@ -3,164 +3,72 @@
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 -- License     : BSD-3
 --
-import qualified Codec.Compression.GZip       as GZip
-import           Control.Monad                (unless, when, liftM2)
-import qualified Data.ByteString.Lazy         as BL
 import           Data.Text                    (Text)
 import qualified Data.Text                    as T
 import qualified Data.Text.IO                 as IO
 import           Data.Text.Encoding           (decodeUtf8)
-import           Data.Maybe                   (fromJust)
-import           Data.Time                    (diffUTCTime, getCurrentTime)
-import           Network.HTTP
-import           Network.URI                  (parseURI)
+import           Network.HTTP                 (urlEncodeVars)
+import           Network.Curl.Download        (openURI)
 import           Options.Applicative
-import           System.Console.ANSI
-import           System.Console.Terminal.Size (Window (..), size)
-import           System.Directory
-import           System.FilePath              ((</>))
-import           System.IO                    (stderr, hPutStr)
+import           Sloane.Config
+import           Sloane.DB                    hiding (null)
+import qualified Sloane.DB                    as DB
 
-type OEISEntries = [Text]
-type ANumber = Text
-type Seq     = Text
-type Query   = String
-type Keys    = String
-type URL     = String
+type URL = String
+type Seq = Text
 
-data Args = Args
-    Bool     -- a: Print all fields?
-    String   -- k: Keys of fields to print
-    Int      -- n: Fetch at most this many entries
-    Bool     -- invert: Return sequences NOT in OEIS
-    Bool     -- update: Update the local sequence cache
-    Bool     -- url: Print URLs of found entries
-    Bool     -- version
-    [String] -- search terms
+data Command
+    = Lookup SearchOpts
+    | Grep   SearchOpts
+    | Filter FilterOpts
+    | Update
+    | Version
 
-name :: String
-name = "sloane 1.8.2"
+data SearchOpts = SearchOpts
+    { full   :: Bool     -- Print all fields?
+    , keys   :: String   -- Keys of fields to print
+    , limit  :: Int      -- Fetch at most this many entries
+    , url    :: Bool     -- Print URLs of found entries
+    , terms  :: [String] -- Search terms
+    }
 
-cacheDir, cacheFile :: FilePath
-cacheDir  = ".sloane"
-cacheFile = "stripped.gz"
+data FilterOpts = FilterOpts
+    { invert :: Bool     -- Return sequences NOT in DB
+    }
 
-oeisHost, oeisURL, cacheURL :: URL
-oeisHost  = "http://oeis.org/"
-oeisURL   = oeisHost ++ "search?fmt=text"
-cacheURL  = oeisHost ++ cacheFile
+oeisKeys :: String
+oeisKeys = "ISTUVWXNDHFYAOEeptoKC" -- Valid OEIS keys
 
-msgDownloadingCache, msgCacheIsUpToDate, msgNoCache, msgOldCache :: String
+oeisUrls :: Config -> DB -> [URL]
+oeisUrls cfg = map ((oeisHost cfg ++) . T.unpack) . aNumbers
 
-msgDownloadingCache = unlines
-    [ "Downloading " ++ cacheURL
-    , "This may take a minute or two ..."
-    ]
-msgCacheIsUpToDate = unlines
-    [ "The sequence cache is now up-to-date"
-    ]
-msgNoCache = unlines
-    [ "No sequence cache found. You need to run \"sloane --update\""
-    ]
-msgOldCache = unlines
-    [ "The sequence cache is more than 100 days old"
-    , "You may want to run \"sloane --update\""
-    ]
-
-select :: Keys -> OEISEntries -> OEISEntries
-select ks = filter (\line -> T.null line || T.head line `elem` ks)
-
-aNumbers :: OEISEntries -> [ANumber]
-aNumbers es = [ T.words ids !! 1 | ids <- select "I" es, not (T.null ids) ]
-
-urls :: OEISEntries -> [URL]
-urls = map (mappend oeisHost . T.unpack) . aNumbers
-
-get :: HStream b => URL -> IO b
-get url = simpleHTTP (defaultGETRequest_ url') >>= getResponseBody
+oeisLookup :: SearchOpts -> Config -> IO DB
+oeisLookup opts cfg =
+    (parseOEISEntries . decodeUtf8 . either error id) <$>
+    openURI (oeisURL cfg ++ "&" ++ urlEncodeVars [("n", show n), ("q", q)])
   where
-    url' = fromJust $ parseURI url
+    n = limit opts
+    q = unwords $ terms opts
 
-searchOEIS :: Int -> Query -> IO OEISEntries
-searchOEIS n s = (trim . decodeUtf8) `fmap` get uri
+grepDB :: SearchOpts -> DB -> DB
+grepDB opts = DB.take n . DB.grep (T.pack q)
   where
-    trim = map (T.drop 1) . reverse . drop 2 . reverse . drop 5 . T.lines
-    uri = oeisURL ++ "&" ++ urlEncodeVars [("n", show n), ("q", s)]
+    n = limit opts
+    q = unwords $ terms opts
 
-cropText :: (Int -> Text -> Text) -> Int -> Text -> Text
-cropText f maxLen s = if maxLen < T.length s then f maxLen s else s
-
-cropSeq :: Int -> Seq -> Seq
-cropSeq = cropText $ \maxLen ->
-              T.reverse . T.dropWhile (/= ',') . T.reverse . T.take maxLen
-
-cropLine :: Int -> Text -> Text
-cropLine = cropText $ \maxLen s -> T.take (maxLen-2) s `T.append` T.pack ".."
-
-getWidth :: IO Int
-getWidth = maybe maxBound width `fmap` size
-
-newline :: IO ()
-newline = putStrLn ""
-
-putEntries :: Int -> OEISEntries -> IO ()
-putEntries ncols = mapM_ $ \line -> do
-    case T.words line of
-        []  -> return ()
-        [w] -> IO.putStr w -- Should never be reached
-        (key:aNum:rest) -> do
-            setSGR [ SetColor Foreground Dull Green ]
-            IO.putStr key
-            setSGR [ SetColor Foreground Dull Yellow ]
-            putStr " " >> IO.putStr aNum
-            setSGR []
-            let crop = if key == T.pack "S" then cropSeq else cropLine
-            putStr " " >> IO.putStr (crop ncols (T.unwords rest))
-    newline
-
-updateCache :: FilePath -> IO ()
-updateCache home = do
-    createDirectoryIfMissing False dir
-    putStr msgDownloadingCache
-    get cacheURL >>= BL.writeFile (dir </> cacheFile)
-    putStr msgCacheIsUpToDate
+filterDB :: FilterOpts -> DB -> IO [Seq]
+filterDB opts db = filter match . parseSeqs <$> IO.getContents
   where
-    dir = home </> cacheDir
-
-readCache :: FilePath -> IO Text
-readCache home = do
-    updated <- doesFileExist fname
-    if updated
-        then do
-            age <- liftM2 diffUTCTime getCurrentTime (getModificationTime fname)
-            when (age > 100*day) $ hPutStr stderr msgOldCache
-            (dropPreamble . decompress) `fmap` BL.readFile fname
-        else
-            error msgNoCache
-  where
-    day = 60*60*24
-    fname = home </> cacheDir </> cacheFile
-    decompress = decodeUtf8 . BL.toStrict . GZip.decompress
-    dropPreamble = T.unlines . drop 4 . T.lines
-
-parseSeqs :: Text -> [Seq]
-parseSeqs =
-    filter (not . T.null) . map mkSeq . T.lines
-  where
+    match q = (if invert opts then id else not) (DB.null $ DB.grep q db)
+    parseSeqs = filter (not . T.null) . map mkSeq . T.lines
     mkSeq = normalize . dropComment
     dropComment = T.takeWhile (/= '#')
     normalize = T.intercalate (T.pack ",") . T.words . clean . T.map tr
-    tr c  = if c `elem` ";," then ' ' else c
+    tr c = if c `elem` ";," then ' ' else c
     clean = T.filter (`elem` " 0123456789-")
 
-filterSeqs :: Bool -> FilePath -> IO ()
-filterSeqs invert home = do
-    cache <- readCache home
-    let f q = (if invert then not else id) (q `T.isInfixOf` cache)
-    IO.getContents >>= mapM_ IO.putStrLn . filter f . parseSeqs
-
-args :: Parser Args
-args = Args
+searchOptionsParser :: Parser SearchOpts
+searchOptionsParser = SearchOpts
     <$> switch (short 'a' <> long "all" <> help "Print all fields")
     <*> strOption
         ( short 'k'
@@ -172,30 +80,50 @@ args = Args
        <> metavar "N"
        <> value 5
        <> help "Fetch at most this many entries [default: 5]" )
-    <*> switch
-        ( long "invert"
-       <> help "When used as a filter, return sequences NOT in OEIS" )
-    <*> switch (long "update" <> help "Update the local sequence cache")
     <*> switch (long "url" <> help "Print URLs of found entries")
-    <*> switch (hidden <> long "version")
-    <*> many (argument str (metavar "TERMS..."))
+    <*> some (argument str (metavar "TERMS..."))
 
-sloane :: Args -> IO ()
-sloane (Args _ _    _ _   _    _   True _ ) = putStrLn name
-sloane (Args _ _    _ _   True _   _    _ ) = getHomeDirectory >>= updateCache
-sloane (Args _ _    _ inv _    _   _    []) = getHomeDirectory >>= filterSeqs inv
-sloane (Args a keys n _   _    url _    ts) = do
-    ncols <- getWidth
-    hits  <- searchOEIS n (unwords ts)
-    let pick = if a then id else select keys
-    unless (null hits) $ do
-        newline
-        if url
-            then putStr $ unlines (urls hits)
-            else putEntries (ncols - 10) (pick hits)
-        newline
+filterOptionsParser :: Parser FilterOpts
+filterOptionsParser = FilterOpts
+    <$> switch (long "invert" <> help "Return sequences NOT in the database")
+
+commandParser :: Parser Command
+commandParser = h <*> opts
+  where
+    h = abortOption ShowHelpText $ hidden <> short 'h' <> long "help"
+    opts = subparser
+        ( command "lookup" (info (Lookup <$> searchOptionsParser)
+          ( progDesc "Lookup a sequence, or other search term, in OEIS" ))
+       <> command "grep" (info (Grep <$> searchOptionsParser)
+          ( progDesc "Grep for a sequence in the local database" ))
+       <> command "filter" (info (Filter <$> filterOptionsParser)
+          ( progDesc ("Read sequences from stdin and "
+                   ++ "return those that are in the local database")))
+       <> command "update" (info (pure Update)
+          ( progDesc "Update the local database" ))
+       <> command "version" (info (pure Version)
+          ( progDesc "Show version info" ))
+        )
+
+execSearch :: (SearchOpts -> Config -> IO DB) -> SearchOpts -> Config -> IO ()
+execSearch f opts cfg = f opts cfg >>=
+    if url opts
+        then putStr . unlines . oeisUrls cfg
+        else putDB cfg (if full opts then oeisKeys else keys opts)
+
+sloane :: Command -> Config -> IO ()
+sloane (Lookup opts) = execSearch oeisLookup opts
+sloane (Grep   opts) = execSearch (\o cfg -> grepDB o <$> readDB cfg) opts
+sloane (Filter opts) = \c -> readDB c >>= filterDB opts >>= mapM_ IO.putStrLn
+sloane Update        = initDB
+sloane Version       = putStrLn . name
 
 main :: IO ()
-main = execParser (info (h <*> args) (fullDesc <> header name)) >>= sloane
+main = do
+    conf <- defaultConfig
+    opts <- customExecParser preferences (info commandParser description)
+    sloane opts conf
   where
-    h = abortOption ShowHelpText $ hidden <> long "help"
+    preferences = prefs showHelpOnError
+    description = fullDesc <> footer
+        "Run 'sloane COMMAND --help' for help on a specific command."
