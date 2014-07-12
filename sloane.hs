@@ -23,8 +23,10 @@ import           System.IO                    (stderr, hPutStr)
 
 type OEISEntries = [Text]
 type ANumber = Text
-type Query = String
-type Keys = String
+type Seq     = Text
+type Query   = String
+type Keys    = String
+type URL     = String
 
 data Args = Args
     Bool     -- a: Print all fields?
@@ -36,15 +38,16 @@ data Args = Args
     Bool     -- version
     [String] -- search terms
 
-name, oeisHost, oeisURL, cacheDir, cacheFile, cacheURL :: String
-
+name :: String
 name = "sloane 1.8.2"
 
-oeisHost  = "http://oeis.org/"
-oeisURL   = oeisHost ++ "search?fmt=text"
-
+cacheDir, cacheFile :: FilePath
 cacheDir  = ".sloane"
 cacheFile = "stripped.gz"
+
+oeisHost, oeisURL, cacheURL :: URL
+oeisHost  = "http://oeis.org/"
+oeisURL   = oeisHost ++ "search?fmt=text"
 cacheURL  = oeisHost ++ cacheFile
 
 msgDownloadingCache, msgCacheIsUpToDate, msgNoCache, msgOldCache :: String
@@ -70,13 +73,13 @@ select ks = filter (\line -> T.null line || T.head line `elem` ks)
 aNumbers :: OEISEntries -> [ANumber]
 aNumbers es = [ T.words ids !! 1 | ids <- select "I" es, not (T.null ids) ]
 
-urls :: OEISEntries -> String
-urls = unlines . map (mappend oeisHost . T.unpack) . aNumbers
+urls :: OEISEntries -> [URL]
+urls = map (mappend oeisHost . T.unpack) . aNumbers
 
-get :: HStream b => String -> IO b
-get uri = simpleHTTP (defaultGETRequest_ uri') >>= getResponseBody
+get :: HStream b => URL -> IO b
+get url = simpleHTTP (defaultGETRequest_ url') >>= getResponseBody
   where
-    uri' = fromJust $ parseURI uri
+    url' = fromJust $ parseURI url
 
 searchOEIS :: Int -> Query -> IO OEISEntries
 searchOEIS n s = (trim . decodeUtf8) `fmap` get uri
@@ -84,15 +87,15 @@ searchOEIS n s = (trim . decodeUtf8) `fmap` get uri
     trim = map (T.drop 1) . reverse . drop 2 . reverse . drop 5 . T.lines
     uri = oeisURL ++ "&" ++ urlEncodeVars [("n", show n), ("q", s)]
 
-cropStr :: (Int -> Text -> Text) -> Int -> Text -> Text
-cropStr f maxLen s = if maxLen < T.length s then f maxLen s else s
+cropText :: (Int -> Text -> Text) -> Int -> Text -> Text
+cropText f maxLen s = if maxLen < T.length s then f maxLen s else s
 
-cropSeq :: Int -> Text -> Text
-cropSeq = cropStr $ \maxLen ->
+cropSeq :: Int -> Seq -> Seq
+cropSeq = cropText $ \maxLen ->
               T.reverse . T.dropWhile (/= ',') . T.reverse . T.take maxLen
 
 cropLine :: Int -> Text -> Text
-cropLine = cropStr $ \maxLen s -> T.take (maxLen-2) s `T.append` T.pack ".."
+cropLine = cropText $ \maxLen s -> T.take (maxLen-2) s `T.append` T.pack ".."
 
 getWidth :: IO Int
 getWidth = maybe maxBound width `fmap` size
@@ -140,12 +143,13 @@ readCache home = do
     decompress = decodeUtf8 . BL.toStrict . GZip.decompress
     dropPreamble = T.unlines . drop 4 . T.lines
 
-seqs :: Text -> [Text]
-seqs = filter (not . T.null) . map mkSeq . T.lines
+parseSeqs :: Text -> [Seq]
+parseSeqs =
+    filter (not . T.null) . map mkSeq . T.lines
   where
     mkSeq = normalize . dropComment
     dropComment = T.takeWhile (/= '#')
-    normalize   = T.intercalate (T.pack ",") . T.words . clean . T.map tr
+    normalize = T.intercalate (T.pack ",") . T.words . clean . T.map tr
     tr c  = if c `elem` ";," then ' ' else c
     clean = T.filter (`elem` " 0123456789-")
 
@@ -153,7 +157,7 @@ filterSeqs :: Bool -> FilePath -> IO ()
 filterSeqs invert home = do
     cache <- readCache home
     let f q = (if invert then not else id) (q `T.isInfixOf` cache)
-    IO.getContents >>= mapM_ IO.putStrLn . filter f . seqs
+    IO.getContents >>= mapM_ IO.putStrLn . filter f . parseSeqs
 
 args :: Parser Args
 args = Args
@@ -187,7 +191,7 @@ sloane (Args a keys n _   _    url _    ts) = do
     unless (null hits) $ do
         newline
         if url
-            then putStr (urls hits)
+            then putStr $ unlines (urls hits)
             else putEntries (ncols - 10) (pick hits)
         newline
 
