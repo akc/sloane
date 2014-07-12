@@ -22,11 +22,11 @@ Executable sloane
   Main-is:             sloane.hs
   ghc-options:         -Wall
   Build-depends:       base >=3 && <5,
-                       optparse-applicative >=0.9,
+                       optparse-applicative >=0.8,
                        HTTP >=4000.0.9,
                        network >=2.4,
                        bytestring >=0.9,
-                       text >=1.1,
+                       text >=0.11,
                        ansi-terminal >=0.6,
                        terminal-size >=0.2,
                        filepath >=1.3,

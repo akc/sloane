@@ -19,10 +19,10 @@ import           System.Console.ANSI
 import           System.Console.Terminal.Size (Window (..), size)
 import           System.Directory
 import           System.FilePath              ((</>))
-import           System.IO                    (stderr)
+import           System.IO                    (stderr, hPutStr)
 
-type OEISEntries = [String]
-type ANumbers = [String]
+type OEISEntries = [Text]
+type ANumber = Text
 type Query = String
 type Keys = String
 
@@ -65,13 +65,13 @@ msgOldCache = unlines
     ]
 
 select :: Keys -> OEISEntries -> OEISEntries
-select ks = filter (\line -> null line || head line `elem` ks)
+select ks = filter (\line -> T.null line || T.head line `elem` ks)
 
-aNumbers :: OEISEntries -> ANumbers
-aNumbers es = [ words ids !! 1 | ids@(_:_) <- select "I" es ]
+aNumbers :: OEISEntries -> [ANumber]
+aNumbers es = [ T.words ids !! 1 | ids <- select "I" es, not (T.null ids) ]
 
 urls :: OEISEntries -> String
-urls = unlines . map (oeisHost ++ ) . aNumbers
+urls = unlines . map (mappend oeisHost . T.unpack) . aNumbers
 
 get :: HStream b => String -> IO b
 get uri = simpleHTTP (defaultGETRequest_ uri') >>= getResponseBody
@@ -79,54 +79,48 @@ get uri = simpleHTTP (defaultGETRequest_ uri') >>= getResponseBody
     uri' = fromJust $ parseURI uri
 
 searchOEIS :: Int -> Query -> IO OEISEntries
-searchOEIS n s = trim `fmap` get uri
+searchOEIS n s = (trim . decodeUtf8) `fmap` get uri
   where
-    trim = map (drop 1) . reverse . drop 2 . reverse . drop 5 . lines
+    trim = map (T.drop 1) . reverse . drop 2 . reverse . drop 5 . T.lines
     uri = oeisURL ++ "&" ++ urlEncodeVars [("n", show n), ("q", s)]
 
-cropStr :: (Int -> String -> String) -> Int -> String -> String
-cropStr f maxLen s = if maxLen < length s then f maxLen s else s
+cropStr :: (Int -> Text -> Text) -> Int -> Text -> Text
+cropStr f maxLen s = if maxLen < T.length s then f maxLen s else s
 
-cropSeq :: Int -> String -> String
+cropSeq :: Int -> Text -> Text
 cropSeq = cropStr $ \maxLen ->
-              reverse . dropWhile (/= ',') . reverse . take maxLen
+              T.reverse . T.dropWhile (/= ',') . T.reverse . T.take maxLen
 
-cropLine :: Int -> String -> String
-cropLine = cropStr $ \maxLen s -> take (maxLen-2) s ++ ".."
+cropLine :: Int -> Text -> Text
+cropLine = cropStr $ \maxLen s -> T.take (maxLen-2) s `T.append` T.pack ".."
 
 getWidth :: IO Int
 getWidth = maybe maxBound width `fmap` size
 
-put :: String -> IO ()
-put = IO.putStr . T.pack
-
-putErr :: String -> IO ()
-putErr = IO.hPutStr stderr . T.pack
-
 newline :: IO ()
-newline = IO.putStrLn T.empty
+newline = putStrLn ""
 
 putEntries :: Int -> OEISEntries -> IO ()
 putEntries ncols = mapM_ $ \line -> do
-    case words line of
+    case T.words line of
         []  -> return ()
-        [w] -> put w -- Should never be reached
+        [w] -> IO.putStr w -- Should never be reached
         (key:aNum:rest) -> do
             setSGR [ SetColor Foreground Dull Green ]
-            put key
+            IO.putStr key
             setSGR [ SetColor Foreground Dull Yellow ]
-            put $ ' ' : aNum
+            putStr " " >> IO.putStr aNum
             setSGR []
-            let crop = if key == "S" then cropSeq else cropLine
-            put $ ' ' : crop ncols (unwords rest)
+            let crop = if key == T.pack "S" then cropSeq else cropLine
+            putStr " " >> IO.putStr (crop ncols (T.unwords rest))
     newline
 
 updateCache :: FilePath -> IO ()
 updateCache home = do
     createDirectoryIfMissing False dir
-    put msgDownloadingCache
+    putStr msgDownloadingCache
     get cacheURL >>= BL.writeFile (dir </> cacheFile)
-    put msgCacheIsUpToDate
+    putStr msgCacheIsUpToDate
   where
     dir = home </> cacheDir
 
@@ -136,7 +130,7 @@ readCache home = do
     if updated
         then do
             age <- liftM2 diffUTCTime getCurrentTime (getModificationTime fname)
-            when (age > 100*day) $ putErr msgOldCache
+            when (age > 100*day) $ hPutStr stderr msgOldCache
             (dropPreamble . decompress) `fmap` BL.readFile fname
         else
             error msgNoCache
@@ -183,7 +177,7 @@ args = Args
     <*> many (argument str (metavar "TERMS..."))
 
 sloane :: Args -> IO ()
-sloane (Args _ _    _ _   _    _   True _ ) = put name >> newline
+sloane (Args _ _    _ _   _    _   True _ ) = putStrLn name
 sloane (Args _ _    _ _   True _   _    _ ) = getHomeDirectory >>= updateCache
 sloane (Args _ _    _ inv _    _   _    []) = getHomeDirectory >>= filterSeqs inv
 sloane (Args a keys n _   _    url _    ts) = do
@@ -193,7 +187,7 @@ sloane (Args a keys n _   _    url _    ts) = do
     unless (null hits) $ do
         newline
         if url
-            then put (urls hits)
+            then putStr (urls hits)
             else putEntries (ncols - 10) (pick hits)
         newline
 
