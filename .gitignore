@@ -6,3 +6,4 @@ cabal-dev
 *.chs.h
 sloane.1
 sloane.html
+TODO.md
