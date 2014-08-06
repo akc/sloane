@@ -1,5 +1,5 @@
 Name:                sloane
-Version:             1.9
+Version:             1.9.1
 Synopsis:            A command line interface to Sloane's On-Line Encyclopedia
                      of Integer Sequences
 Description:         A command line interface to Sloane's On-Line Encyclopedia
@@ -24,7 +24,7 @@ Executable sloane
   Main-is:             sloane.hs
   Other-Modules:       Sloane.Config
                        Sloane.DB
-  ghc-options:         -Wall -O
+  ghc-options:         -Wall
   Build-depends:       base >=3 && <5,
                        containers >=0.5,
                        optparse-applicative >=0.8,

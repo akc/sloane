@@ -17,6 +17,12 @@ import qualified Sloane.DB                    as DB
 type URL = String
 type Seq = Text
 
+data Visibility = Visible | Internal
+
+data Options
+    = Cmd Command
+    | IntOpts SearchOpts -- Internal opts for fallback to lookup
+
 data Command
     = Lookup SearchOpts
     | Grep   SearchOpts
@@ -67,63 +73,81 @@ filterDB opts db = filter match . parseSeqs <$> IO.getContents
     tr c = if c `elem` ";," then ' ' else c
     clean = T.filter (`elem` " 0123456789-")
 
-searchOptionsParser :: Parser SearchOpts
-searchOptionsParser = SearchOpts
-    <$> switch (short 'a' <> long "all" <> help "Print all fields")
+searchOptionsParser :: Visibility -> Parser SearchOpts
+searchOptionsParser visibility = hiddenHelp <*> (SearchOpts
+    <$> switch
+        ( short 'a'
+       <> long "all"
+       <> help "Print all fields"
+       <> f )
     <*> strOption
         ( short 'k'
        <> metavar "KEYS"
        <> value "SN"
-       <> help "Keys of fields to print [default: SN]" )
+       <> help "Keys of fields to print [default: SN]"
+       <> f )
     <*> option
         ( short 'n'
        <> metavar "N"
        <> value 5
-       <> help "Fetch at most this many entries [default: 5]" )
-    <*> switch (long "url" <> help "Print URLs of found entries")
-    <*> some (argument str (metavar "TERMS..."))
+       <> help "Fetch at most this many entries [default: 5]"
+       <> f )
+    <*> switch
+        ( long "url"
+       <> help "Print URLs of found entries"
+       <> f )
+    <*> some (argument str (metavar "TERMS...")))
+  where
+    f = case visibility of {Visible -> idm; Internal -> internal}
 
 filterOptionsParser :: Parser FilterOpts
 filterOptionsParser = FilterOpts
     <$> switch (long "invert" <> help "Return sequences NOT in the database")
 
 commandParser :: Parser Command
-commandParser = h <*> opts
-  where
-    h = abortOption ShowHelpText $ hidden <> short 'h' <> long "help"
-    opts = subparser
-        ( command "lookup" (info (Lookup <$> searchOptionsParser)
-          ( progDesc "Lookup a sequence, or other search term, in OEIS" ))
-       <> command "grep" (info (Grep <$> searchOptionsParser)
-          ( progDesc "Grep for a sequence in the local database" ))
-       <> command "filter" (info (Filter <$> filterOptionsParser)
-          ( progDesc ("Read sequences from stdin and "
-                   ++ "return those that are in the local database")))
-       <> command "update" (info (pure Update)
-          ( progDesc "Update the local database" ))
-       <> command "version" (info (pure Version)
-          ( progDesc "Show version info" ))
-        )
+commandParser = subparser
+    ( command "lookup" (info (Lookup <$> searchOptionsParser Visible)
+      ( progDesc "Lookup a sequence, or other search term, in OEIS" ))
+   <> command "grep" (info (Grep <$> searchOptionsParser Visible)
+      ( progDesc "Grep for a sequence in the local database" ))
+   <> command "filter" (info (Filter <$> filterOptionsParser)
+      ( progDesc ("Read sequences from stdin and "
+               ++ "return those that are in the local database")))
+   <> command "update" (info (pure Update)
+      ( progDesc "Update the local database" ))
+   <> command "version" (info (pure Version)
+      ( progDesc "Show version info" ))
+    )
 
-execSearch :: (SearchOpts -> Config -> IO DB) -> SearchOpts -> Config -> IO ()
-execSearch f opts cfg = f opts cfg >>=
+optionsParser :: Parser Options
+optionsParser =
+    (Cmd <$> commandParser) <|> (IntOpts <$> searchOptionsParser Internal)
+
+runSearch :: (SearchOpts -> Config -> IO DB) -> SearchOpts -> Config -> IO ()
+runSearch f opts cfg = f opts cfg >>=
     if url opts
         then putStr . unlines . oeisUrls cfg
         else putDB cfg (if full opts then oeisKeys else keys opts)
 
-sloane :: Command -> Config -> IO ()
-sloane (Lookup opts) = execSearch oeisLookup opts
-sloane (Grep   opts) = execSearch (\o cfg -> grepDB o <$> readDB cfg) opts
-sloane (Filter opts) = \c -> readDB c >>= filterDB opts >>= mapM_ IO.putStrLn
-sloane Update        = initDB
-sloane Version       = putStrLn . name
+runCmd :: Command -> Config -> IO ()
+runCmd (Lookup opts) = runSearch oeisLookup opts
+runCmd (Grep   opts) = runSearch (\o cfg -> grepDB o <$> readDB cfg) opts
+runCmd (Filter opts) = \c -> readDB c >>= filterDB opts >>= mapM_ IO.putStrLn
+runCmd Update        = initDB
+runCmd Version       = putStrLn . name
+
+hiddenHelp :: Parser (a -> a)
+hiddenHelp = abortOption ShowHelpText $ hidden <> short 'h' <> long "help"
 
 main :: IO ()
 main = do
     conf <- defaultConfig
-    opts <- customExecParser preferences (info commandParser description)
-    sloane opts conf
+    opts <- customExecParser preferences (info parser description)
+    case opts of
+        (Cmd cmd)   -> runCmd cmd conf
+        (IntOpts o) -> runCmd (Lookup o) conf -- Fallback to 'lookup'
   where
+    parser = hiddenHelp <*> optionsParser
     preferences = prefs showHelpOnError
     description = fullDesc <> footer
         "Run 'sloane COMMAND --help' for help on a specific command."

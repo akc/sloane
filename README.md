@@ -1,6 +1,6 @@
 ---
-title: SLOANE(1) Sloane User Manual | Version 1.9
-date: July 21, 2014
+title: SLOANE(1) Sloane User Manual | Version 1.9.1
+date: 6 Aug 2014
 ---
 
 # NAME
@@ -10,8 +10,8 @@ On-Line Encyclopedia of Integer Sequences <http://oeis.org>
 
 # SYNOPSIS
 
-sloane (lookup | grep)
-  [-a | --all | -k *keys* | --url] [-n *entries*] *search-terms* ...  
+sloane [lookup | grep] 
+  [-a | --all | -k *keys* | --url] [-n *entries*] *terms* ...  
 sloane filter [--invert]  
 sloane update  
 sloane version  
@@ -24,12 +24,18 @@ term of a sequence. For example,
 
     sloane lookup 1,1,2,5,15,52,203,877,4140
 
-returns entry A000110 (Bell numbers), and four more entries. One can
-also search by sequence id (A-number), or even search for arbitrary
-words. See the **EXAMPLES** section. Alternatively, using the `sloane
-grep` command, the search can be done locally against a downloaded list
-of known sequences. This mode works by "grepping" for the query in the
-sequence field.
+returns entry A000110 (Bell numbers), and four more entries. If no
+command is given sloane will fall back to the lookup command, so the
+above query can more simply be given as
+
+    sloane 1,1,2,5,15,52,203,877,4140
+
+One can also search by sequence id (A-number), or even search for
+arbitrary words. See the **EXAMPLES** section.
+
+Alternatively, using the `sloane grep` command, the search can be done
+locally against a downloaded list of known sequences. This mode works by
+"grepping" for the query in the sequence field.
 
 To check a large number of sequences one can use the `sloane filter`
 command.  It reads the standard input line-by-line, if the sequence read
