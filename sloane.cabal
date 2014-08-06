@@ -12,7 +12,7 @@ Author:              Anders Claesson
 Maintainer:          anders.claesson@gmail.com
 Category:            Math
 Build-type:          Custom
-Extra-Source-Files:  README.md sloane.1 CHANGELOG.md
+Extra-Source-Files:  README.md sloane.1
 
 Cabal-version:       >=1.9.2
 
