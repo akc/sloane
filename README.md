@@ -1,6 +1,6 @@
 ---
-title: SLOANE(1) Sloane User Manual | Version 1.9.1
-date: 6 Aug 2014
+title: SLOANE(1) Sloane User Manual | Version 1.9.3
+date: 24 Sep 2014
 ---
 
 # NAME
