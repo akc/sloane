@@ -86,7 +86,7 @@ searchOptionsParser visibility = hiddenHelp <*> (SearchOpts
        <> value "SN"
        <> help "Keys of fields to print [default: SN]"
        <> f )
-    <*> option
+    <*> option auto
         ( short 'n'
        <> metavar "N"
        <> value 5
