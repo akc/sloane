@@ -7,10 +7,10 @@
 module Sloane.DB
     ( DB
     , Reply
-    , initDB
-    , readDB
-    , writeDB
-    , putDB
+    , update
+    , read
+    , write
+    , put
     , null
     , insert
     , lookup
@@ -20,14 +20,14 @@ module Sloane.DB
     , parseOEISEntries
     ) where
 
-import           Prelude                    hiding (lookup, null, take)
+import           Prelude                    hiding (lookup, null, take, read)
 import qualified Prelude                    as P
 import           Data.List                  (intersect)
 import           Data.ByteString            (ByteString)
 import qualified Data.ByteString.Lazy       as BL
 import           Data.Map                   (Map, (!))
 import qualified Data.Map                   as M
-import           Data.Serialize
+import           Data.Serialize             hiding (put)
 import           Data.Text                  (Text)
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as IO
@@ -65,15 +65,15 @@ decompress = BL.toStrict . GZip.decompress
 decompressDB :: BL.ByteString -> Either String DB
 decompressDB = fmap decodeDB . decode . decompress
 
-initDB :: Config -> IO ()
-initDB cfg = do
+update :: Config -> IO ()
+update cfg = do
     createDirectoryIfMissing False (sloaneDir cfg)
     putStrLn $ "Downloading " ++ sURL cfg
     dbS <- openLazyURI (sURL cfg) >>= either error (return . mkDB 'S')
     putStrLn $ "Downloading " ++ nURL cfg
     dbN <- openLazyURI (nURL cfg) >>= either error (return . mkDB 'N')
     putStrLn "Building database"
-    writeDB cfg $ unionDB dbS dbN
+    write cfg $ unionDB dbS dbN
     putStrLn "Done."
   where
     unionDB = M.unionWith M.union
@@ -82,15 +82,15 @@ initDB cfg = do
     mkReply key = M.singleton key . T.dropWhile (==',') . T.drop 8
     aNumberAndReply key line = (T.take 7 line, mkReply key line)
 
-readDB :: Config -> IO DB
-readDB cfg = doesFileExist (sloaneDB cfg) >>= \updated ->
+read :: Config -> IO DB
+read cfg = doesFileExist (sloaneDB cfg) >>= \updated ->
     if updated
         then BL.readFile (sloaneDB cfg) >>= either error return . decompressDB
         else error $ "No local database found. " ++
                      "You need to run \"sloane update\" first."
 
-writeDB :: Config -> DB -> IO ()
-writeDB cfg = BL.writeFile (sloaneDB cfg) . compressDB
+write :: Config -> DB -> IO ()
+write cfg = BL.writeFile (sloaneDB cfg) . compressDB
 
 null :: DB -> Bool
 null = M.null
@@ -125,8 +125,8 @@ parseOEISEntries = unions . map parseLine . trim
     parseWords (key:aNum:rest) = singleton aNum (T.head key) (T.unwords rest)
     parseWords _ = M.empty
 
-putDB :: Config -> [Key] -> DB -> IO ()
-putDB cfg keys db = do
+put :: Config -> [Key] -> DB -> IO ()
+put cfg keys db = do
     unless (null db) $ putStrLn ""
     forM_ (M.toList db) $ \(aNum, reply) -> do
         forM_ (keys `intersect` M.keys reply) $ \key -> do

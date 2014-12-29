@@ -11,7 +11,7 @@ import           Network.HTTP                 (urlEncodeVars)
 import           Network.Curl.Download        (openURI)
 import           Options.Applicative
 import           Sloane.Config
-import           Sloane.DB                    hiding (null)
+import           Sloane.DB                    (DB)
 import qualified Sloane.DB                    as DB
 
 type URL = String
@@ -34,11 +34,11 @@ oeisKeys :: String
 oeisKeys = "ISTUVWXNDHFYAOEeptoKC" -- Valid OEIS keys
 
 oeisUrls :: Config -> DB -> [URL]
-oeisUrls cfg = map ((oeisHost cfg ++) . T.unpack) . aNumbers
+oeisUrls cfg = map ((oeisHost cfg ++) . T.unpack) . DB.aNumbers
 
 oeisLookup :: Options -> Config -> IO DB
 oeisLookup opts cfg =
-    (parseOEISEntries . decodeUtf8 . either error id) <$>
+    (DB.parseOEISEntries . decodeUtf8 . either error id) <$>
     openURI (oeisURL cfg ++ "&" ++ urlEncodeVars [("n", show n), ("q", q)])
   where
     n = limit opts
@@ -110,14 +110,14 @@ search :: (Options -> Config -> IO DB) -> Options -> Config -> IO ()
 search f opts cfg = f opts cfg >>= put
   where
     put | url opts  = putStr . unlines . oeisUrls cfg
-        | otherwise = putDB cfg $ if full opts then oeisKeys else keys opts
+        | otherwise = DB.put cfg $ if full opts then oeisKeys else keys opts
 
 sloane :: Options -> Config -> IO ()
 sloane opts
   | version opts = putStrLn . name
-  | update  opts = initDB
-  | filtr   opts = \c -> readDB c >>= filterDB opts >>= mapM_ IO.putStrLn
-  | local   opts = search (\o cfg -> grepDB o <$> readDB cfg) opts
+  | update  opts = DB.update
+  | filtr   opts = \c -> DB.read c >>= filterDB opts >>= mapM_ IO.putStrLn
+  | local   opts = search (\o cfg -> grepDB o <$> DB.read cfg) opts
   | otherwise    = search oeisLookup opts
 
 main :: IO ()
