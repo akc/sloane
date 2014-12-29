@@ -19,11 +19,11 @@ type URL = String
 type Seq = Text
 
 data Options = Options
-    { local   :: Bool     -- Lookup in local DB
-    , full    :: Bool     -- Print all fields?
+    { full    :: Bool     -- Print all fields?
     , keys    :: String   -- Keys of fields to print
     , limit   :: Int      -- Fetch at most this many entries
     , url     :: Bool     -- Print URLs of found entries
+    , local   :: Bool     -- Lookup in local DB
     , filtr   :: Bool     -- Filter out sequences in local DB
     , invert  :: Bool     -- Return sequences NOT in DB
     , update  :: Bool     -- Updated local DB
@@ -72,9 +72,6 @@ hiddenHelp = abortOption ShowHelpText $ hidden <> long "help"
 optionsParser :: Parser Options
 optionsParser = hiddenHelp <*> (Options
     <$> switch
-        ( long "local"
-       <> help "Use the local database rather than oeis.org" )
-    <*> switch
         ( short 'a'
        <> long "all"
        <> help "Print all fields" )
@@ -91,6 +88,9 @@ optionsParser = hiddenHelp <*> (Options
     <*> switch
         ( long "url"
        <> help "Print URLs of found entries" )
+    <*> switch
+        ( long "local"
+       <> help "Use the local database rather than oeis.org" )
     <*> switch
         ( long "filter"
        <> help ("Read sequences from stdin and return"

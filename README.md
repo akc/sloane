@@ -1,6 +1,6 @@
 ---
-title: SLOANE(1) Sloane User Manual | Version 1.9.3
-date: 24 Sep 2014
+title: SLOANE(1) Sloane User Manual | Version 2.0.0
+date: 29 Dec 2014
 ---
 
 # NAME
@@ -10,63 +10,46 @@ On-Line Encyclopedia of Integer Sequences <http://oeis.org>
 
 # SYNOPSIS
 
-sloane [lookup | grep] 
-  [-a | --all | -k *keys* | --url] [-n *entries*] *terms* ...  
-sloane filter [--invert]  
-sloane update  
-sloane version  
+    sloane [-a|--all] [-k KEYS] [-n N] [--url] [--local] [--filter]
+           [--invert] [--update] [--version] [TERMS...]
 
 # DESCRIPTION
 
-The `sloane lookup` command searches Sloane's On-Line Encyclopedia of
-Integer Sequences (OEIS). The search terms are typically the leading
-term of a sequence. For example,
-
-    sloane lookup 1,1,2,5,15,52,203,877,4140
-
-returns entry A000110 (Bell numbers), and four more entries. If no
-command is given sloane will fall back to the lookup command, so the
-above query can more simply be given as
+The `sloane` command searches Sloane's On-Line Encyclopedia of Integer
+Sequences (OEIS). The search terms are typically the leading term of a
+sequence. For example,
 
     sloane 1,1,2,5,15,52,203,877,4140
 
-One can also search by sequence id (A-number), or even search for
-arbitrary words. See the **EXAMPLES** section.
+returns entry A000110 (Bell numbers), and four more entries.  One can
+also search by sequence id (A-number), or even search for arbitrary
+words. See the **EXAMPLES** section.
 
-Alternatively, using the `sloane grep` command, the search can be done
-locally against a downloaded list of known sequences. This mode works by
-"grepping" for the query in the sequence field.
+Alternatively, using the `--local` option, the search can be done
+locally against a downloaded local database of known sequences. This
+mode works by "grepping" for the query in the sequence field.
 
-To check a large number of sequences one can use the `sloane filter`
-command.  It reads the standard input line-by-line, if the sequence read
-is in the local database, then it is returned to the standard output; if
-not, it is ignored. This way onw can quickly filter out the sequences
-from the input that are in the local database. In other words, assuming
-that *FILE* contains one sequence per line,
+To check a large number of sequences one can use `--filter`.  When this
+option is set, `sloane` reads the standard input line-by-line, if the
+sequence read is in the local database, then it is returned to the
+standard output; if not, it is ignored. This way one can quickly filter
+out the sequences from the input that are in the local database. In
+other words, assuming that *FILE* contains one sequence per line,
 
-    sloane filter <FILE
+    sloane --filter <FILE
 
 returns the subset of the sequences in *FILE* that are in the local
 database. To also look-up the names of those sequences one could, for
 instance, run
 
-    sloane filter <FILE | xargs -L1 --verbose sloane grep
+    sloane --filter <FILE | xargs -L1 --verbose sloane --local
 
 Sloane normally crops long lines to fit the widths of the terminal. If
 this is unwanted, pipe the output through cat or less:
 
-    sloane lookup -a id:A000110 | less -R
+    sloane -a id:A000110 | less -R
 
 # OPTIONS
-
---help
-:   Display a short help message
-
-# COMMANDS
-
-## `lookup`
-
-Lookup a sequence, or other search term, in OEIS
 
 -a, --all
 :   Print all fields
@@ -74,39 +57,37 @@ Lookup a sequence, or other search term, in OEIS
 -k *keys*
 :   Keys of fields to print (default: SN)
 
---url
-:   Print URLs of found entries (but nothing else)
-
 -n *entries*
 :   Fetch at most this many entries (default: 5)
 
+--url
+:   Print URLs of found entries (but nothing else)
 
-## `grep`
+--local
+:   Grep for a sequence in the local database.
 
-Grep for a sequence in the local database. Same options as for the
-`lookup` command apply.
-
-## `filter`
-
-Read sequences from stdin and return those that are in the local
-database.
+--filter
+:   Read sequences from stdin and return those that are in the local
+    database.
 
 --invert
-:   Return sequences *not* in the database.
+:   Return sequences *not* in the database. Only relevant when used
+    with `--filter`
 
-## `update`
+--update
+:   Update the local database.
 
-Update the local database.
+--version
+:   Print version information.
 
-## `version`
-
-Print version information.
+--help
+:   Display a short help message
 
 # EXAMPLES
 
 The most common search is for entries matching a sequence of consecutive terms:
 
-    sloane lookup 1,3,19,183,2371,38703
+    sloane 1,3,19,183,2371,38703
 
 At the time of writing this particular query would return
 
@@ -118,21 +99,21 @@ the name (N) fields. To override the default one can use the keys
 option. For instance, the following search shows the sequence, name,
 comments, and formula fields of the sequence whose A-number is A006531:
 
-    sloane lookup -k SNCF id:A006531
+    sloane -k SNCF id:A006531
 
 The next example returns at most 3 results of a free text search:
 
-    sloane lookup -n 3 "(2+2)-free posets"
+    sloane -n 3 "(2+2)-free posets"
 
 To view the full entries of these 3 results in a browser (e.g., Firefox)
 one can use the url option:
 
-    firefox `sloane lookup --url -n 3 "(2+2)-free posets"`
+    firefox `sloane --url -n 3 "(2+2)-free posets"`
 
 In the final example the local cache is used to filter out sequences
 from the standard input that are in OEIS:
 
-    sloane filter <<END
+    sloane --filter <<END
     1,2,3,6,11,23,47,106,235           # Comma separated integers
     1 2 444 90 120                     # Space separated integers
     '(3 9 27 88 123)                   # S-expression
