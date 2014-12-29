@@ -50,45 +50,60 @@ grepDB opts = DB.take n . DB.grep (T.pack q)
     n = limit opts
     q = unwords $ terms opts
 
+dropComment :: Text -> Text
+dropComment = T.takeWhile (/= '#')
+
+mkSeq :: Text -> Seq
+mkSeq = T.intercalate (T.pack ",") . T.words . clean . dropComment
+  where
+    clean = T.filter (`elem` " 0123456789-") . T.map tr
+    tr c  = if c `elem` ";," then ' ' else c
+
 filterDB :: Options -> DB -> IO [Seq]
 filterDB opts db = filter match . parseSeqs <$> IO.getContents
   where
     match q = (if invert opts then id else not) (DB.null $ DB.grep q db)
     parseSeqs = filter (not . T.null) . map mkSeq . T.lines
-    mkSeq = normalize . dropComment
-    dropComment = T.takeWhile (/= '#')
-    normalize = T.intercalate (T.pack ",") . T.words . clean . T.map tr
-    tr c = if c `elem` ";," then ' ' else c
-    clean = T.filter (`elem` " 0123456789-")
 
 hiddenHelp :: Parser (a -> a)
 hiddenHelp = abortOption ShowHelpText $ hidden <> short 'h' <> long "help"
 
 optionsParser :: Parser Options
 optionsParser = hiddenHelp <*> (Options
-    <$> switch (long "local"   <> help ("Use the local database"
-                                    ++ " rather than oeis.org"))
-    <*> switch (long "filter"  <> help ("Read sequences from stdin and return"
-                                    ++ " those that are in the local database"))
-    <*> switch (long "invert"  <> help ("Return sequences NOT in the database;"
-                                   ++ " only relevant when used with --filter"))
-    <*> switch (long "update"  <> help "Update the local database")
-    <*> switch (long "version" <> help "Show version info")
+    <$> switch
+        ( long "local"
+       <> help "Use the local database rather than oeis.org" )
+    <*> switch
+        ( long "filter"
+       <> help ("Read sequences from stdin and return"
+            ++ " those that are in the local database") )
+    <*> switch
+        ( long "invert"
+       <> help ("Return sequences NOT in the database;"
+            ++ " only relevant when used with --filter") )
+    <*> switch
+        ( long "update"
+       <> help "Update the local database" )
+    <*> switch
+        ( long "version"
+       <> help "Show version info" )
     <*> switch
         ( short 'a'
        <> long "all"
-       <> help "Print all fields")
+       <> help "Print all fields" )
     <*> strOption
         ( short 'k'
        <> metavar "KEYS"
        <> value "SN"
-       <> help "Keys of fields to print [default: SN]")
+       <> help "Keys of fields to print [default: SN]" )
     <*> option auto
         ( short 'n'
        <> metavar "N"
        <> value 5
-       <> help "Fetch at most this many entries [default: 5]")
-    <*> switch (long "url" <> help "Print URLs of found entries")
+       <> help "Fetch at most this many entries [default: 5]" )
+    <*> switch
+        ( long "url"
+       <> help "Print URLs of found entries" )
     <*> some (argument str (metavar "TERMS...")))
 
 search :: (Options -> Config -> IO DB) -> Options -> Config -> IO ()
