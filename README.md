@@ -71,8 +71,8 @@ this is unwanted, pipe the output through cat or less:
     database.
 
 --invert
-:   Return sequences *not* in the database. Only relevant when used
-    with `--filter`
+:   Return sequences *not* in the database. This option has no effect
+    unless `--filter` is also set.
 
 --update
 :   Update the local database.
