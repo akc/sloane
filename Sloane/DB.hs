@@ -48,32 +48,23 @@ type Reply   = Map Key Entry
 type DB      = Map ANumber Reply
 type DBRaw   = Map ByteString (Map Char ByteString)
 
-mb :: Int
-mb = 1024*1024
+encodeUtf8' :: DB -> DBRaw
+encodeUtf8'= M.mapKeys encodeUtf8 . M.map (M.map encodeUtf8)
 
-encodeDB :: DB -> DBRaw
-encodeDB = M.mapKeys encodeUtf8 . M.map (M.map encodeUtf8)
+decodeUtf8' :: DBRaw -> DB
+decodeUtf8' = M.mapKeys decodeUtf8 . M.map (M.map decodeUtf8)
 
-decodeDB :: DBRaw -> DB
-decodeDB = M.mapKeys decodeUtf8 . M.map (M.map decodeUtf8)
-
-compress :: ByteString -> ByteString
-compress =
-    B.concat . BL.toChunks . GZ.compressWith params . BL.fromStrict
-  where
-    params = GZ.defaultCompressParams {GZ.compressBufferSize = 5*mb}
+gzCompress :: ByteString -> ByteString
+gzCompress = BL.toStrict . GZ.compress . BL.fromStrict
 
 compressDB :: DB -> ByteString
-compressDB = compress . encode . encodeDB
+compressDB = gzCompress . encode . encodeUtf8'
 
-decompress :: ByteString -> ByteString
-decompress =
-    B.concat . BL.toChunks . GZ.decompressWith params . BL.fromStrict
-  where
-    params = GZ.defaultDecompressParams {GZ.decompressBufferSize = 10*mb}
+gzDecompress :: ByteString -> ByteString
+gzDecompress = BL.toStrict . GZ.decompress . BL.fromStrict
 
 decompressDB :: ByteString -> Either String DB
-decompressDB = fmap decodeDB . decode . decompress
+decompressDB = fmap decodeUtf8' . decode . gzDecompress
 
 update :: Config -> IO ()
 update cfg = do
@@ -87,7 +78,7 @@ update cfg = do
     putStrLn "Done."
   where
     unionDB = M.unionWith M.union
-    mkDB key = mkMap key . decodeUtf8 . decompress
+    mkDB key = mkMap key . decodeUtf8 . gzDecompress
     mkMap key = M.fromList . map (aNumberAndReply key) . drop 4 . T.lines
     mkReply key = M.singleton key . T.dropWhile (==',') . T.drop 8
     aNumberAndReply key line = (T.take 7 line, mkReply key line)
