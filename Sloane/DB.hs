@@ -87,7 +87,7 @@ read cfg = doesFileExist (sloaneDB cfg) >>= \updated ->
     if updated
         then BL.readFile (sloaneDB cfg) >>= either error return . decompressDB
         else error $ "No local database found. " ++
-                     "You need to run \"sloane update\" first."
+                     "You need to run \"sloane --update\" first."
 
 write :: Config -> DB -> IO ()
 write cfg = BL.writeFile (sloaneDB cfg) . compressDB
@@ -102,7 +102,10 @@ lookup :: ANumber -> DB -> Maybe Reply
 lookup = M.lookup
 
 grep :: Text -> DB -> DB
-grep q = M.filter $ \reply -> q `T.isInfixOf` (reply ! 'S')
+grep q = M.filter $ \reply ->
+             case M.lookup 'S' reply of
+                 Nothing -> False
+                 Just r  -> q `T.isInfixOf` r
 
 take :: Int -> DB -> DB
 take n = M.fromList . P.take n . M.toList
