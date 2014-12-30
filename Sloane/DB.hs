@@ -24,17 +24,18 @@ import           Prelude                    hiding (lookup, null, take, read)
 import qualified Prelude                    as P
 import           Data.List                  (intersect)
 import           Data.ByteString            (ByteString)
+import qualified Data.ByteString            as B
 import qualified Data.ByteString.Lazy       as BL
-import           Data.Map                   (Map, (!))
-import qualified Data.Map                   as M
+import           Data.Map.Strict            (Map, (!))
+import qualified Data.Map.Strict            as M
 import           Data.Serialize             hiding (put)
 import           Data.Text                  (Text)
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as IO
 import           Data.Text.Encoding         (decodeUtf8, encodeUtf8)
 import           Control.Monad              (forM_, unless)
-import qualified Codec.Compression.GZip     as GZip
-import           Network.Curl.Download.Lazy (openLazyURI)
+import qualified Codec.Compression.GZip     as GZ
+import           Network.Curl.Download      (openURI)
 import           System.Console.ANSI
 import           Sloane.Config
 import           System.Directory
@@ -47,31 +48,40 @@ type Reply   = Map Key Entry
 type DB      = Map ANumber Reply
 type DBRaw   = Map ByteString (Map Char ByteString)
 
+mb :: Int
+mb = 1024*1024
+
 encodeDB :: DB -> DBRaw
 encodeDB = M.mapKeys encodeUtf8 . M.map (M.map encodeUtf8)
 
 decodeDB :: DBRaw -> DB
 decodeDB = M.mapKeys decodeUtf8 . M.map (M.map decodeUtf8)
 
-compress :: ByteString -> BL.ByteString
-compress = GZip.compress . BL.fromStrict
+compress :: ByteString -> ByteString
+compress =
+    B.concat . BL.toChunks . GZ.compressWith params . BL.fromStrict
+  where
+    params = GZ.defaultCompressParams {GZ.compressBufferSize = 5*mb}
 
-compressDB :: DB -> BL.ByteString
+compressDB :: DB -> ByteString
 compressDB = compress . encode . encodeDB
 
-decompress :: BL.ByteString -> ByteString
-decompress = BL.toStrict . GZip.decompress
+decompress :: ByteString -> ByteString
+decompress =
+    B.concat . BL.toChunks . GZ.decompressWith params . BL.fromStrict
+  where
+    params = GZ.defaultDecompressParams {GZ.decompressBufferSize = 10*mb}
 
-decompressDB :: BL.ByteString -> Either String DB
+decompressDB :: ByteString -> Either String DB
 decompressDB = fmap decodeDB . decode . decompress
 
 update :: Config -> IO ()
 update cfg = do
     createDirectoryIfMissing False (sloaneDir cfg)
     putStrLn $ "Downloading " ++ sURL cfg
-    dbS <- openLazyURI (sURL cfg) >>= either error (return . mkDB 'S')
+    dbS <- openURI (sURL cfg) >>= either error (return . mkDB 'S')
     putStrLn $ "Downloading " ++ nURL cfg
-    dbN <- openLazyURI (nURL cfg) >>= either error (return . mkDB 'N')
+    dbN <- openURI (nURL cfg) >>= either error (return . mkDB 'N')
     putStrLn "Building database"
     write cfg $ unionDB dbS dbN
     putStrLn "Done."
@@ -85,12 +95,12 @@ update cfg = do
 read :: Config -> IO DB
 read cfg = doesFileExist (sloaneDB cfg) >>= \updated ->
     if updated
-        then BL.readFile (sloaneDB cfg) >>= either error return . decompressDB
+        then B.readFile (sloaneDB cfg) >>= either error return . decompressDB
         else error $ "No local database found. " ++
                      "You need to run \"sloane --update\" first."
 
 write :: Config -> DB -> IO ()
-write cfg = BL.writeFile (sloaneDB cfg) . compressDB
+write cfg = B.writeFile (sloaneDB cfg) . compressDB
 
 null :: DB -> Bool
 null = M.null
