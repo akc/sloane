@@ -252,7 +252,7 @@ transforms =
     , tTRISECT2
     , tPOINT
     , tWEIGHT
---    , tPARTITION
+    , tPARTITION
     ]
 
 lookupTranform :: String -> Maybe NamedTransform
