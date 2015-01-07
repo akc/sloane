@@ -121,9 +121,11 @@ nthRoot n (Series cs@(c:_)) = Series [d] * nthRoot1 n (Series $ map (/c) cs)
               (0, _) -> ogf [1::Int]
               (n, k) -> nthRoot k f ^^ n
 
+-- XXX: Deprecate and use (^^^(1%2)) instead?
 squareRoot :: GF -> GF
 squareRoot = Series . map toRational . squareRoot' . map fromRational . coeffs
 
+-- XXX: Deprecate?
 squareRoot' :: [Double] -> [Double]
 squareRoot' []     = []
 squareRoot' (c:ct) = ds
