@@ -163,9 +163,9 @@ tDIFF = NT "DIFF" (\cs -> zipWith (-) (drop 1 cs) cs)
 
 -- The Mobius function of the poset of integers under divisibility
 mobius :: Integer -> Integer -> Integer
-mobius x y
-  | x == y         = 1
-  | y `rem` x == 0 = -sum [ mobius x z | z <- [x..y-1], y `rem` z == 0 ]
+mobius a b
+  | a == b         = 1
+  | b `rem` a == 0 = -sum [ mobius a c | c <- [a..b-1], b `rem` c == 0 ]
   | otherwise      = 0
 
 -- The number theoretical Mobius function
