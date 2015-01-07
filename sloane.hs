@@ -5,6 +5,7 @@
 --
 
 import           Data.List                    (intercalate)
+import           Data.Maybe                   (maybeToList)
 import           Data.Monoid
 import           Data.Text                    (Text)
 import qualified Data.Text                    as T
@@ -14,12 +15,11 @@ import           Network.HTTP                 (urlEncodeVars)
 import           Network.Curl.Download        (openURI)
 import           Options.Applicative
 import           Sloane.Config
-import           Sloane.DB                    (DB)
+import           Sloane.DB                    (DB, ANumber, Seq)
 import qualified Sloane.DB                    as DB
 import           Sloane.Transform
 
 type URL = String
-type Seq = Text
 
 data Options = Options
     { full    :: Bool     -- Print all fields?
@@ -29,6 +29,7 @@ data Options = Options
     , local   :: Bool     -- Lookup in local DB
     , filtr   :: Bool     -- Filter out sequences in local DB
     , invert  :: Bool     -- Return sequences NOT in DB
+    , anumber :: Int      -- Get the sequence with this number from the local DB
     , transform :: String -- Apply the named transform
     , listTransforms :: Bool -- List the names of all transforms
     , update  :: Bool     -- Updated local DB
@@ -80,6 +81,10 @@ mkSeq = T.intercalate (T.pack ",") . T.words . clean . dropComment
     clean = T.filter (`elem` " 0123456789-") . T.map tr
     tr c  = if c `elem` ";," then ' ' else c
 
+-- A000055
+mkANumber :: Int -> ANumber
+mkANumber n = let s = show n in T.pack ('A' : replicate (6-length s) '0' ++ s)
+
 filterDB :: Options -> DB -> IO [Seq]
 filterDB opts db = filter match . parseSeqs <$> IO.getContents
   where
@@ -119,6 +124,11 @@ optionsParser = hiddenHelp <*> (Options
         ( long "invert"
        <> help ("Return sequences NOT in the database;"
             ++ " only relevant when used with --filter") )
+    <*> option auto
+        ( short 'A'
+       <> metavar "NUMBER"
+       <> value 0
+       <> help "Fetch the sequence with this number from the local database" )
     <*> strOption
         ( long "transform"
        <> metavar "NAME"
@@ -149,10 +159,13 @@ main = do
          $ parserFailure pprefs pinfo ShowHelpText mempty
     opts <- customExecParser pprefs pinfo
     let tname = transform opts
+    let anum = anumber opts
+    let lookupSeq = maybeToList . DB.lookupSeq (mkANumber anum)
     let sloane
          | version opts = putStrLn . nameVer
          | update opts = DB.update
          | listTransforms opts = const $ mapM_ (putStrLn . name) transforms
+         | anum > 0 = \c -> lookupSeq <$> DB.read c >>= mapM_ IO.putStrLn
          | filtr opts = \c -> DB.read c >>= filterDB opts >>= mapM_ IO.putStrLn
          | null (terms opts) = const usage
          | not (null tname) = const $ applyTransform opts tname

@@ -6,6 +6,8 @@
 
 module Sloane.DB
     ( DB
+    , ANumber
+    , Seq
     , Reply
     , update
     , read
@@ -14,6 +16,7 @@ module Sloane.DB
     , null
     , insert
     , lookup
+    , lookupSeq
     , grep
     , take
     , aNumbers
@@ -41,6 +44,7 @@ import           Sloane.Config
 import           System.Directory
 
 type ANumber = Text
+type Seq     = Text
 type Key     = Char
 type Entry   = Text
 type Reply   = Map Key Entry
@@ -101,6 +105,9 @@ insert = M.insert
 
 lookup :: ANumber -> DB -> Maybe Reply
 lookup = M.lookup
+
+lookupSeq :: ANumber -> DB -> Maybe Seq
+lookupSeq anum db = lookup anum db >>= M.lookup 'S'
 
 grep :: Text -> DB -> DB
 grep q = M.filter $ \reply ->
