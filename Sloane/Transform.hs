@@ -19,6 +19,8 @@ module Sloane.Transform
     , tCONVi
     , tEXPCONV
     , tDIFF
+    , tMOBIUS
+    , tMOBIUSi
     , tEULER
     , tEXP
     , tLOG
@@ -159,6 +161,31 @@ tEXPCONV = NT "EXPCONV" (\cs -> egfCoeffs (egf cs ^ (2::Int)))
 tDIFF :: NamedTransform
 tDIFF = NT "DIFF" (\cs -> zipWith (-) (drop 1 cs) cs)
 
+-- The Mobius function of the poset of integers under divisibility
+mobius :: Integer -> Integer -> Integer
+mobius x y
+  | x == y         = 1
+  | y `rem` x == 0 = -sum [ mobius x z | z <- [x..y-1], y `rem` z == 0 ]
+  | otherwise      = 0
+
+-- The number theoretical Mobius function
+mu :: Integer -> Integer
+mu = mobius 1
+
+tMOBIUS :: NamedTransform
+tMOBIUS = NT "MOBIUS" $ \cs ->
+    [ sum [mu (n `div` k) % 1 * (cs !! (fromInteger k-1))
+          | k<-[1..n], n `rem` k == 0
+          ]
+    | (n,_) <- zip [1..] cs
+    ]
+
+tMOBIUSi :: NamedTransform
+tMOBIUSi = NT "MOBIUSi" $ \cs ->
+    [ sum [ (cs !! (fromInteger k-1)) | k<-[1..n], n `rem` k == 0 ]
+    | (n,_) <- zip [1..] cs
+    ]
+
 tEULER :: NamedTransform
 tEULER = NT "EULER" (\cs ->
     let f = product $ zipWith (\n c -> (1 - x^n)^^^c) [1::Int ..] cs
@@ -238,6 +265,8 @@ transforms =
     , tCONVi
     , tEXPCONV
     , tDIFF
+    , tMOBIUS
+    , tMOBIUSi
     , tEULER
 --    , tEULERi
     , tEXP

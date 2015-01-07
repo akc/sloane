@@ -34,6 +34,10 @@ prop_BINOMIALi_BINOMIAL = forAll (resize 20 arbitrary) $ \cs ->
 prop_BINOMIAL_BINOMIALi = forAll (resize 20 arbitrary) $ \cs ->
     ((tBINOMIAL <> tBINOMIALi) $$ cs) == cs
 
+prop_MOBIUS_MOBIUSi cs = ((tMOBIUS <> tMOBIUSi) $$ cs) == cs
+
+prop_MOBIUSi_MOBIUS cs = ((tMOBIUSi <> tMOBIUS) $$ cs) == cs
+
 prop_LOG_EXP = forAll (resize 20 arbitrary) $ \cs ->
     ((tLOG <> tEXP) $$ cs) == cs
 
@@ -58,6 +62,8 @@ tests =
     , checkUnit tBISECT0 [0,1,2,3,4,5] [0,2,4]
     , checkUnit tBISECT1 [0,1,2,3,4,5] [1,3,5]
     , checkUnit tDIFF [9,4,1,0,1,4,9] [-5,-3,-1,1,3,5]
+    , checkUnit tMOBIUS [1,3,4,7,6,12] [1,2,3,4,5,6]
+    , checkUnit tMOBIUSi [1,2,3,4,5,6] [1,3,4,7,6,12]
     , checkUnit tEULER [1,1,0,0,0,0,0] [1,2,2,3,3,4,4]
     , checkUnit tEXP [1,2,3,4] [1,3,10,41]
     , checkUnit tLOG [1,3,10,41] [1,2,3,4]
@@ -80,6 +86,8 @@ tests =
     , ("M2i.M2==id",             check 100 prop_M2i_M2)
     , ("BINOMIALi.BINOMIAL==id", check 100 prop_BINOMIALi_BINOMIAL)
     , ("BINOMIALi.BINOMIAL==id", check 100 prop_BINOMIALi_BINOMIAL)
+    , ("MOBIUS.MOBIUSi==id",     check 100 prop_MOBIUS_MOBIUSi)
+    , ("MOBIUSi.MOBIUS==id",     check 100 prop_MOBIUSi_MOBIUS)
     , ("EXP.LOG==id",            check 100 prop_EXP_LOG)
     , ("LOG.EXP==id",            check 100 prop_LOG_EXP)
     , ("CONVi.CONV==id",         check 100 prop_CONVi_CONV)
