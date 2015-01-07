@@ -1,6 +1,6 @@
 ---
 title: SLOANE(1) Sloane User Manual | Version 2.0.0
-date: 2 Jan 2015
+date: 7 Jan 2015
 ---
 
 # NAME
@@ -10,13 +10,15 @@ On-Line Encyclopedia of Integer Sequences <http://oeis.org>
 
 # SYNOPSIS
 
-sloane [-a|--all] [-k KEYS] [-n N] [--url] [--local] [TERMS...]
+sloane [-a|--all] [-k KEYS] [-n N] [--url] [--local] TERMS...
 
-sloane [--filter] [--invert]
+sloane -A NUMBER
 
-sloane [--transform NAME] [--list-transforms]
+sloane --filter [--invert]
 
-sloane [--update] [--version] [--help]
+sloane --transform NAME
+
+sloane (--list-transforms | --update | --version | --help)
 
 # DESCRIPTION
 
@@ -71,6 +73,10 @@ this is unwanted, pipe the output through cat or less:
 --local
 :   Grep for a sequence in the local database.
 
+-A *NUMBER*
+:   Fetch the sequence with this number from the local database. Prints
+    the sequence, but nothing else, to sdout.
+
 --filter
 :   Read sequences from stdin and return those that are in the local
     database.
@@ -124,7 +130,11 @@ one can use the url option:
 
     firefox `sloane --url -n 3 "(2+2)-free posets"`
 
-In the final example the local cache is used to filter out sequences
+To retrieve sequence A022493 from the local database use the `-A` option:
+
+    sloane -A022493
+
+In the final example the local database is used to filter out sequences
 from the standard input that are in OEIS:
 
     sloane --filter <<END

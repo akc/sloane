@@ -27,9 +27,9 @@ data Options = Options
     , limit   :: Int      -- Fetch at most this many entries
     , url     :: Bool     -- Print URLs of found entries
     , local   :: Bool     -- Lookup in local DB
+    , anumber :: Int      -- Get the sequence with this number from the local DB
     , filtr   :: Bool     -- Filter out sequences in local DB
     , invert  :: Bool     -- Return sequences NOT in DB
-    , anumber :: Int      -- Get the sequence with this number from the local DB
     , transform :: String -- Apply the named transform
     , listTransforms :: Bool -- List the names of all transforms
     , update  :: Bool     -- Updated local DB
@@ -116,6 +116,11 @@ optionsParser = hiddenHelp <*> (Options
     <*> switch
         ( long "local"
        <> help "Use the local database rather than oeis.org" )
+    <*> option auto
+        ( short 'A'
+       <> metavar "NUMBER"
+       <> value 0
+       <> help "Fetch the sequence with this number from the local database" )
     <*> switch
         ( long "filter"
        <> help ("Read sequences from stdin and return"
@@ -124,11 +129,6 @@ optionsParser = hiddenHelp <*> (Options
         ( long "invert"
        <> help ("Return sequences NOT in the database;"
             ++ " only relevant when used with --filter") )
-    <*> option auto
-        ( short 'A'
-       <> metavar "NUMBER"
-       <> value 0
-       <> help "Fetch the sequence with this number from the local database" )
     <*> strOption
         ( long "transform"
        <> metavar "NAME"
