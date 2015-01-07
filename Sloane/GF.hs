@@ -87,6 +87,7 @@ diff = lift dF where {dF [] = []; dF (_:ct) = zipWith (*) [1..] ct}
 nthRootApprox :: Integer -> GF -> [GF]
 nthRootApprox n f@(Series (1:_)) =
     iterateUntilFixed (nthRootNext n f) (Series [1])
+nthRootApprox _ _ = error "GF has constant term different from 1"
 
 nthRootNext :: Integer -> GF -> GF -> GF
 nthRootNext n f g = Series (take (1 + 2*degree f) ds)
@@ -106,6 +107,7 @@ nthRoot1 :: Integer -> GF -> GF
 nthRoot1 n f@(Series (1:_)) =
     let css = transpose (map coeffs (nthRootApprox n f))
     in Series $ map fromJust (takeWhile isJust (map saddlePoint css))
+nthRoot1 _ _ = error "GF has constant term different from 1"
 
 nthRoot :: Integer -> GF -> GF
 nthRoot _ (Series [])       = Series []
@@ -116,15 +118,8 @@ nthRoot n (Series cs@(c:_)) = Series [d] * nthRoot1 n (Series $ map (/c) cs)
 (^^^) :: GF -> Rational -> GF
 (^^^) f r = case (numerator r, denominator r) of
               (n, 1) -> f ^^ n
-              (0, _) -> ogf [1]
+              (0, _) -> ogf [1::Int]
               (n, k) -> nthRoot k f ^^ n
-
--- XXX: Seems correct, but isn't producing anything
--- nthRoot :: Integer -> GF -> GF
--- nthRoot n f = sum [ (f-1)^k * fromRational (bin n k) | k<-[0..]]
---   where
---     -- bin n k = {1/n choose k}
---     bin n k = product [(1-i*n+n) % i | i<-[1..k] ] / (n%1)^k
 
 squareRoot :: GF -> GF
 squareRoot = Series . map toRational . squareRoot' . map fromRational . coeffs
