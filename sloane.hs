@@ -81,7 +81,6 @@ mkSeq = T.intercalate (T.pack ",") . T.words . clean . dropComment
     clean = T.filter (`elem` " 0123456789-") . T.map tr
     tr c  = if c `elem` ";," then ' ' else c
 
--- A000055
 mkANumber :: Int -> ANumber
 mkANumber n = let s = show n in T.pack ('A' : replicate (6-length s) '0' ++ s)
 
