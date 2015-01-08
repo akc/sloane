@@ -128,7 +128,7 @@ tM2 :: NamedTransform
 tM2 = NT "M2" f where f [] = []; f (c:cs) = c : map ((2%1)*) cs
 
 tM2i :: NamedTransform
-tM2i = NT "M2i" (\cs -> ogfCoeffs (Series (f cs)))
+tM2i = NT "M2i" (ogfCoeffs . Series . f)
   where
     f [] = []
     f cs = let (d:ds) = map toRational cs in d : map (/(2%1)) ds
@@ -153,7 +153,7 @@ tCONV :: NamedTransform
 tCONV = NT "CONV" (\cs -> ogfCoeffs (ogf cs ^ (2::Int)))
 
 tCONVi :: NamedTransform
-tCONVi = NT "CONVi" (\cs -> ogfCoeffs (squareRoot (ogf cs)))
+tCONVi = NT "CONVi" (ogfCoeffs . squareRoot . ogf cs)
 
 tEXPCONV :: NamedTransform
 tEXPCONV = NT "EXPCONV" (\cs -> egfCoeffs (egf cs ^ (2::Int)))
@@ -182,7 +182,7 @@ tMOBIUS = NT "MOBIUS" $ \cs ->
 
 tMOBIUSi :: NamedTransform
 tMOBIUSi = NT "MOBIUSi" $ \cs ->
-    [ sum [ (cs !! (fromInteger k-1)) | k<-[1..n], n `rem` k == 0 ]
+    [ sum [ cs !! (fromInteger k-1) | k<-[1..n], n `rem` k == 0 ]
     | (n,_) <- zip [1..] cs
     ]
 
@@ -244,7 +244,7 @@ increasing cs = and $ zipWith (<=) cs (drop 1 cs)
 tPARTITION :: NamedTransform
 tPARTITION = NT "PARTITION" $ \cs -> do
     guard $ not (null cs) && all (>0) cs && increasing cs
-    let f = product $ map (\c -> (1 - x^^^c)) (nub cs)
+    let f = product $ map (\c -> 1 - x^^^c) (nub cs)
     drop 1 . ogfCoeffs $ 1/f
 
 -- New transform: tSTIELTJES -- continued fraction coefficients

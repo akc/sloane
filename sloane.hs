@@ -93,7 +93,7 @@ filterDB opts db = filter match . parseSeqs <$> IO.getContents
 
 optionsParser :: Parser Options
 optionsParser =
-  (abortOption ShowHelpText $ long "help") <*> (Options
+  abortOption ShowHelpText (long "help") <*> (Options
     <$> switch
         ( short 'a'
        <> long "all"
