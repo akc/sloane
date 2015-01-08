@@ -150,18 +150,17 @@ search f opts cfg = f opts cfg >>= put
         | otherwise = DB.put cfg $ if full opts then oeisKeys else keys opts
 
 getTerms :: Options -> IO Options
-getTerms opts =
-    (\xs -> opts {terms = xs}) <$>
-      case terms opts of
-        [] -> isEOF >>= \b ->
-                if b then error "<stdin>: end of file"
-                     else return <$> getLine
-        ts -> return ts
+getTerms opts
+    | filtr opts = return opts
+    | otherwise  = (\xs -> opts {terms = xs}) <$>
+        case terms opts of
+          [] -> isEOF >>= \b ->
+                  if b then error "<stdin>: end of file" else return <$> getLine
+          ts -> return ts
 
 main :: IO ()
 main = do
-    let pinfo = info optionsParser fullDesc
-    opts <- execParser pinfo >>= \o -> (if filtr o then return else getTerms) o
+    opts <- getTerms =<< execParser (info optionsParser fullDesc)
     let tname = transform opts
     let anum = anumber opts
     let lookupSeq = maybeToList . DB.lookupSeq (mkANumber anum)
