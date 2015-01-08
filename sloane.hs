@@ -11,6 +11,7 @@ import           Data.Text                    (Text)
 import qualified Data.Text                    as T
 import qualified Data.Text.IO                 as IO
 import           Data.Text.Encoding           (decodeUtf8)
+import           System.IO                    (isEOF)
 import           Network.HTTP                 (urlEncodeVars)
 import           Network.Curl.Download        (openURI)
 import           Options.Applicative
@@ -90,11 +91,9 @@ filterDB opts db = filter match . parseSeqs <$> IO.getContents
     match q = (if invert opts then id else not) (DB.null $ DB.grep q db)
     parseSeqs = filter (not . T.null) . map mkSeq . T.lines
 
-hiddenHelp :: Parser (a -> a)
-hiddenHelp = abortOption ShowHelpText $ hidden <> long "help"
-
 optionsParser :: Parser Options
-optionsParser = hiddenHelp <*> (Options
+optionsParser =
+  (abortOption ShowHelpText $ long "help") <*> (Options
     <$> switch
         ( short 'a'
        <> long "all"
@@ -132,7 +131,7 @@ optionsParser = hiddenHelp <*> (Options
         ( long "transform"
        <> metavar "NAME"
        <> value ""
-       <> help ("Apply the named transform to input sequence"))
+       <> help "Apply the named transform to input sequence")
     <*> switch
         ( long "list-transforms"
        <> help "List the names of all transforms" )
@@ -150,13 +149,19 @@ search f opts cfg = f opts cfg >>= put
     put | url opts  = putStr . unlines . oeisUrls cfg
         | otherwise = DB.put cfg $ if full opts then oeisKeys else keys opts
 
+getTerms :: Options -> IO Options
+getTerms opts =
+    (\xs -> opts {terms = xs}) <$>
+      case terms opts of
+        [] -> isEOF >>= \b ->
+                if b then error "<stdin>: end of file"
+                     else return <$> getLine
+        ts -> return ts
+
 main :: IO ()
 main = do
-    let pprefs = prefs mempty
     let pinfo = info optionsParser fullDesc
-    let usage = handleParseResult . Failure
-         $ parserFailure pprefs pinfo ShowHelpText mempty
-    opts <- customExecParser pprefs pinfo
+    opts <- execParser pinfo >>= \o -> (if filtr o then return else getTerms) o
     let tname = transform opts
     let anum = anumber opts
     let lookupSeq = maybeToList . DB.lookupSeq (mkANumber anum)
@@ -166,7 +171,6 @@ main = do
          | listTransforms opts = const $ mapM_ (putStrLn . name) transforms
          | anum > 0 = \c -> lookupSeq <$> DB.read c >>= mapM_ IO.putStrLn
          | filtr opts = \c -> DB.read c >>= filterDB opts >>= mapM_ IO.putStrLn
-         | null (terms opts) = const usage
          | not (null tname) = const $ applyTransform opts tname
          | local opts = search (\o cfg -> grepDB o <$> DB.read cfg) opts
          | otherwise = search oeisLookup opts
