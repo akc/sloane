@@ -29,7 +29,7 @@ defaultConfig = do
     h <- getHomeDirectory
     let dsloane = h </> ".sloane"
     return Config
-        { nameVer   = "sloane 2.0.1"
+        { nameVer   = "sloane 2.0.2"
         , home      = h
         , sloaneDir = dsloane
         , sloaneDB  = dsloane </> "sloane.db"
