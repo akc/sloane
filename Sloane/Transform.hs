@@ -153,7 +153,7 @@ tCONV :: NamedTransform
 tCONV = NT "CONV" (\cs -> ogfCoeffs (ogf cs ^ (2::Int)))
 
 tCONVi :: NamedTransform
-tCONVi = NT "CONVi" (ogfCoeffs . squareRoot . ogf cs)
+tCONVi = NT "CONVi" (ogfCoeffs . squareRoot . ogf)
 
 tEXPCONV :: NamedTransform
 tEXPCONV = NT "EXPCONV" (\cs -> egfCoeffs (egf cs ^ (2::Int)))
