@@ -69,7 +69,6 @@ applyTransform opts tname =
     tr c  = if c `elem` ";," then ' ' else c
     input = map read (words (map tr (unwords (terms opts))))
 
-
 dropComment :: Text -> Text
 dropComment = T.takeWhile (/= '#')
 
@@ -151,12 +150,18 @@ search f opts cfg = f opts cfg >>= put
 
 getTerms :: Options -> IO Options
 getTerms opts
-    | filtr opts = return opts
-    | otherwise  = (\xs -> opts {terms = xs}) <$>
+    | dont      = return opts
+    | otherwise = (\xs -> opts {terms = xs}) <$>
         case terms opts of
           [] -> isEOF >>= \b ->
-                  if b then error "<stdin>: end of file" else return <$> getLine
+                  if b then error "<stdin>: end of file"
+                       else return <$> getLine
           ts -> return ts
+  where
+    dont = or [ filtr opts, anumber opts > 0
+              , listTransforms opts, update opts
+              , version opts
+              ]
 
 main :: IO ()
 main = do
