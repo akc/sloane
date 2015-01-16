@@ -7,10 +7,9 @@
 import           Data.List                    (intercalate)
 import           Data.Maybe                   (maybeToList)
 import           Data.Monoid
-import           Data.Text                    (Text)
-import qualified Data.Text                    as T
 import qualified Data.Text.IO                 as IO
-import           Data.Text.Encoding           (decodeUtf8)
+import           Data.ByteString              (ByteString)
+import qualified Data.ByteString.Char8        as Ch8
 import           System.IO                    (isEOF)
 import           Network.HTTP                 (urlEncodeVars)
 import           Network.Curl.Download        (openURI)
@@ -42,18 +41,18 @@ oeisKeys :: String
 oeisKeys = "ISTUVWXNDHFYAOEeptoKC" -- Valid OEIS keys
 
 oeisUrls :: Config -> DB -> [URL]
-oeisUrls cfg = map ((oeisHost cfg ++) . T.unpack) . DB.aNumbers
+oeisUrls cfg = map ((oeisHost cfg ++) . Ch8.unpack) . DB.aNumbers
 
 oeisLookup :: Options -> Config -> IO DB
 oeisLookup opts cfg =
-    (DB.parseOEISEntries . decodeUtf8 . either error id) <$>
+    (DB.parseOEISEntries . either error id) <$>
     openURI (oeisURL cfg ++ "&" ++ urlEncodeVars [("n", show n), ("q", q)])
   where
     n = limit opts
     q = unwords $ terms opts
 
 grepDB :: Options -> DB -> DB
-grepDB opts = DB.take n . DB.grep (T.pack q)
+grepDB opts = DB.take n . DB.grep (Ch8.pack q)
   where
     n = limit opts
     q = intercalate "," (terms opts)
@@ -69,26 +68,26 @@ applyTransform opts tname =
     tr c  = if c `elem` ";," then ' ' else c
     input = map read (words (map tr (unwords (terms opts))))
 
-dropComment :: Text -> Text
-dropComment = T.takeWhile (/= '#')
+dropComment :: ByteString -> ByteString
+dropComment = Ch8.takeWhile (/= '#')
 
 showSeq :: [Integer] -> String
 showSeq = intercalate "," . map show
 
-mkSeq :: Text -> Seq
-mkSeq = T.intercalate (T.pack ",") . T.words . clean . dropComment
+mkSeq :: ByteString -> Seq
+mkSeq = Ch8.intercalate (Ch8.pack ",") . Ch8.words . clean . dropComment
   where
-    clean = T.filter (`elem` " 0123456789-") . T.map tr
+    clean = Ch8.filter (`elem` " 0123456789-") . Ch8.map tr
     tr c  = if c `elem` ";," then ' ' else c
 
 mkANumber :: Int -> ANumber
-mkANumber n = let s = show n in T.pack ('A' : replicate (6-length s) '0' ++ s)
+mkANumber n = let s = show n in Ch8.pack ('A' : replicate (6-length s) '0' ++ s)
 
 filterDB :: Options -> DB -> IO [Seq]
-filterDB opts db = filter match . parseSeqs <$> IO.getContents
+filterDB opts db = filter match . parseSeqs <$> Ch8.getContents
   where
     match q = (if invert opts then id else not) (DB.null $ DB.grep q db)
-    parseSeqs = filter (not . T.null) . map mkSeq . T.lines
+    parseSeqs = filter (not . Ch8.null) . map mkSeq . Ch8.lines
 
 optionsParser :: Parser Options
 optionsParser =
@@ -174,7 +173,7 @@ main = do
          | update opts = DB.update
          | listTransforms opts = const $ mapM_ (putStrLn . name) transforms
          | anum > 0 = \c -> lookupSeq <$> DB.read c >>= mapM_ IO.putStrLn
-         | filtr opts = \c -> DB.read c >>= filterDB opts >>= mapM_ IO.putStrLn
+         | filtr opts = \c -> DB.read c >>= filterDB opts >>= mapM_ Ch8.putStrLn
          | not (null tname) = const $ applyTransform opts tname
          | local opts = search (\o cfg -> grepDB o <$> DB.read cfg) opts
          | otherwise = search oeisLookup opts

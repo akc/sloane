@@ -1,5 +1,5 @@
 Name:                sloane
-Version:             2.0.3
+Version:             2.0.4
 Synopsis:            A command line interface to Sloane's On-Line Encyclopedia
                      of Integer Sequences
 Description:         A command line interface to Sloane's On-Line Encyclopedia
@@ -40,4 +40,5 @@ Executable sloane
                        terminal-size >=0.2,
                        filepath >=1.3,
                        directory >=1.2,
-                       zlib >=0.5
+                       zlib >=0.5,
+                       stringsearch

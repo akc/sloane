@@ -26,6 +26,8 @@ module Sloane.DB
 import           Prelude                    hiding (lookup, null, take, read)
 import qualified Prelude                    as P
 import           Data.List                  (intersect)
+import qualified Data.ByteString.Search     as Search
+import qualified Data.ByteString.Char8      as Ch8
 import           Data.ByteString            (ByteString)
 import qualified Data.ByteString            as B
 import qualified Data.ByteString.Lazy       as BL
@@ -43,8 +45,8 @@ import           System.Console.ANSI
 import           Sloane.Config
 import           System.Directory
 
-type ANumber = Text
-type Seq     = Text
+type ANumber = ByteString
+type Seq     = ByteString
 type Key     = Char
 type Entry   = Text
 type Reply   = Map Key Entry
@@ -53,10 +55,10 @@ type DB      = Map ANumber Reply
 type DBRaw   = Map ByteString (Map Char ByteString)
 
 encodeUtf8' :: DB -> DBRaw
-encodeUtf8'= M.mapKeys encodeUtf8 . M.map (M.map encodeUtf8)
+encodeUtf8'= M.map (M.map encodeUtf8)
 
 decodeUtf8' :: DBRaw -> DB
-decodeUtf8' = M.mapKeys decodeUtf8 . M.map (M.map decodeUtf8)
+decodeUtf8' = M.map (M.map decodeUtf8)
 
 gzCompress :: ByteString -> ByteString
 gzCompress = BL.toStrict . GZ.compress . BL.fromStrict
@@ -82,10 +84,10 @@ update cfg = do
     putStrLn "Done."
   where
     unionDB = M.unionWith M.union
-    mkDB key = mkMap key . decodeUtf8 . gzDecompress
-    mkMap key = M.fromList . map (aNumberAndReply key) . drop 4 . T.lines
-    mkReply key = M.singleton key . T.dropWhile (==',') . T.drop 8
-    aNumberAndReply key line = (T.take 7 line, mkReply key line)
+    mkDB key = mkMap key . gzDecompress
+    mkMap key = M.fromList . map (aNumberAndReply key) . drop 4 . Ch8.lines
+    mkReply key = M.singleton key . decodeUtf8 . Ch8.dropWhile (==',') . Ch8.drop 8
+    aNumberAndReply key line = (Ch8.take 7 line, mkReply key line)
 
 read :: Config -> IO DB
 read cfg = doesFileExist (sloaneDB cfg) >>= \updated ->
@@ -106,14 +108,17 @@ insert = M.insert
 lookup :: ANumber -> DB -> Maybe Reply
 lookup = M.lookup
 
-lookupSeq :: ANumber -> DB -> Maybe Seq
+lookupSeq :: ANumber -> DB -> Maybe Text
 lookupSeq anum db = lookup anum db >>= M.lookup 'S'
 
-grep :: Text -> DB -> DB
+isInfix :: ByteString -> ByteString -> Bool
+isInfix q = not . P.null . Search.indices q
+
+grep :: ByteString -> DB -> DB
 grep q = M.filter $ \reply ->
              case M.lookup 'S' reply of
                  Nothing -> False
-                 Just r  -> q `T.isInfixOf` r
+                 Just r  -> q `isInfix` (encodeUtf8 r)
 
 take :: Int -> DB -> DB
 take n = M.fromList . P.take n . M.toList
@@ -128,12 +133,12 @@ unions = M.unionsWith . M.unionWith $ \s t ->
 singleton :: ANumber -> Key -> Entry -> DB
 singleton aNum key entry = M.singleton aNum $ M.singleton key entry
 
-parseOEISEntries :: Text -> DB
+parseOEISEntries :: ByteString -> DB
 parseOEISEntries = unions . map parseLine . trim
   where
-    trim = map (T.drop 1) . reverse . drop 2 . reverse . drop 5 . T.lines
-    parseLine = parseWords . T.words
-    parseWords (key:aNum:rest) = singleton aNum (T.head key) (T.unwords rest)
+    trim = map (Ch8.drop 1) . reverse . drop 2 . reverse . drop 5 . Ch8.lines
+    parseLine = parseWords . Ch8.words
+    parseWords (key:aNum:rest) = singleton aNum (Ch8.head key) (decodeUtf8 (Ch8.unwords rest))
     parseWords _ = M.empty
 
 put :: Config -> [Key] -> DB -> IO ()
@@ -146,7 +151,7 @@ put cfg keys db = do
                 setSGR [ SetColor Foreground Dull Green ]
                 putStr [key]
                 setSGR [ SetColor Foreground Dull Yellow ]
-                putStr " " >> IO.putStr aNum
+                putStr " " >> Ch8.putStr aNum
                 setSGR []
                 putStr " " >> IO.putStrLn (crop key (termWidth cfg - 10) line)
         putStrLn ""
