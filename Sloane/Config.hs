@@ -1,5 +1,5 @@
 -- |
--- Copyright   : Anders Claesson 2014
+-- Copyright   : Anders Claesson 2014-2015
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 -- License     : BSD-3
 --
@@ -29,7 +29,7 @@ defaultConfig = do
     h <- getHomeDirectory
     let dsloane = h </> ".sloane"
     return Config
-        { nameVer   = "sloane 2.0.4"
+        { nameVer   = "sloane 2.0.5"
         , home      = h
         , sloaneDir = dsloane
         , sloaneDB  = dsloane </> "sloane.db"

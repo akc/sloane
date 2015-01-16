@@ -1,5 +1,5 @@
 -- |
--- Copyright   : Anders Claesson 2014
+-- Copyright   : Anders Claesson 2014-2015
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 -- License     : BSD-3
 --
@@ -37,7 +37,7 @@ import           Data.Serialize             hiding (put)
 import           Data.Text                  (Text)
 import qualified Data.Text                  as T
 import qualified Data.Text.IO               as IO
-import           Data.Text.Encoding         (decodeUtf8, encodeUtf8)
+import           Data.Text.Encoding         (decodeUtf8)
 import           Control.Monad              (forM_, unless)
 import qualified Codec.Compression.GZip     as GZ
 import           Network.Curl.Download      (openURI)
@@ -48,37 +48,30 @@ import           System.Directory
 type ANumber = ByteString
 type Seq     = ByteString
 type Key     = Char
-type Entry   = Text
+type Entry   = ByteString
 type Reply   = Map Key Entry
 
 type DB      = Map ANumber Reply
-type DBRaw   = Map ByteString (Map Char ByteString)
-
-encodeUtf8' :: DB -> DBRaw
-encodeUtf8'= M.map (M.map encodeUtf8)
-
-decodeUtf8' :: DBRaw -> DB
-decodeUtf8' = M.map (M.map decodeUtf8)
 
 gzCompress :: ByteString -> ByteString
 gzCompress = BL.toStrict . GZ.compress . BL.fromStrict
 
 compressDB :: DB -> ByteString
-compressDB = gzCompress . encode . encodeUtf8'
+compressDB = gzCompress . encode
 
 gzDecompress :: ByteString -> ByteString
 gzDecompress = BL.toStrict . GZ.decompress . BL.fromStrict
 
 decompressDB :: ByteString -> Either String DB
-decompressDB = fmap decodeUtf8' . decode . gzDecompress
+decompressDB = decode . gzDecompress
 
 update :: Config -> IO ()
 update cfg = do
     createDirectoryIfMissing False (sloaneDir cfg)
     putStrLn $ "Downloading " ++ sURL cfg
-    dbS <- openURI (sURL cfg) >>= either error (return . mkDB 'S')
+    dbS <- either error (return . mkDB 'S') =<< openURI (sURL cfg)
     putStrLn $ "Downloading " ++ nURL cfg
-    dbN <- openURI (nURL cfg) >>= either error (return . mkDB 'N')
+    dbN <- either error (return . mkDB 'N') =<< openURI (nURL cfg)
     putStrLn "Building database"
     write cfg $ unionDB dbS dbN
     putStrLn "Done."
@@ -86,7 +79,7 @@ update cfg = do
     unionDB = M.unionWith M.union
     mkDB key = mkMap key . gzDecompress
     mkMap key = M.fromList . map (aNumberAndReply key) . drop 4 . Ch8.lines
-    mkReply key = M.singleton key . decodeUtf8 . Ch8.dropWhile (==',') . Ch8.drop 8
+    mkReply key = M.singleton key . Ch8.dropWhile (==',') . Ch8.drop 8
     aNumberAndReply key line = (Ch8.take 7 line, mkReply key line)
 
 read :: Config -> IO DB
@@ -108,7 +101,7 @@ insert = M.insert
 lookup :: ANumber -> DB -> Maybe Reply
 lookup = M.lookup
 
-lookupSeq :: ANumber -> DB -> Maybe Text
+lookupSeq :: ANumber -> DB -> Maybe Seq
 lookupSeq anum db = lookup anum db >>= M.lookup 'S'
 
 isInfix :: ByteString -> ByteString -> Bool
@@ -118,7 +111,7 @@ grep :: ByteString -> DB -> DB
 grep q = M.filter $ \reply ->
              case M.lookup 'S' reply of
                  Nothing -> False
-                 Just r  -> q `isInfix` (encodeUtf8 r)
+                 Just r  -> q `isInfix` r
 
 take :: Int -> DB -> DB
 take n = M.fromList . P.take n . M.toList
@@ -128,17 +121,17 @@ aNumbers = M.keys
 
 unions :: [DB] -> DB
 unions = M.unionsWith . M.unionWith $ \s t ->
-    (s `T.append` T.pack "\n") `T.append` t
+    (s `B.append` Ch8.pack "\n") `B.append` t
 
 singleton :: ANumber -> Key -> Entry -> DB
-singleton aNum key entry = M.singleton aNum $ M.singleton key entry
+singleton aNum key = M.singleton aNum . M.singleton key
 
 parseOEISEntries :: ByteString -> DB
 parseOEISEntries = unions . map parseLine . trim
   where
     trim = map (Ch8.drop 1) . reverse . drop 2 . reverse . drop 5 . Ch8.lines
     parseLine = parseWords . Ch8.words
-    parseWords (key:aNum:rest) = singleton aNum (Ch8.head key) (decodeUtf8 (Ch8.unwords rest))
+    parseWords (key:aNum:rest) = singleton aNum (Ch8.head key) (Ch8.unwords rest)
     parseWords _ = M.empty
 
 put :: Config -> [Key] -> DB -> IO ()
@@ -147,13 +140,14 @@ put cfg keys db = do
     forM_ (M.toList db) $ \(aNum, reply) -> do
         forM_ (keys `intersect` M.keys reply) $ \key -> do
             let entry = reply ! key
-            forM_ (T.lines entry) $ \line -> do
+            forM_ (Ch8.lines entry) $ \line -> do
+                let line' = decodeUtf8 line
                 setSGR [ SetColor Foreground Dull Green ]
                 putStr [key]
                 setSGR [ SetColor Foreground Dull Yellow ]
                 putStr " " >> Ch8.putStr aNum
                 setSGR []
-                putStr " " >> IO.putStrLn (crop key (termWidth cfg - 10) line)
+                putStr " " >> IO.putStrLn (crop key (termWidth cfg - 10) line')
         putStrLn ""
 
 crop :: Key -> Int -> Text -> Text

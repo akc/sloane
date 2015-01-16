@@ -1,5 +1,5 @@
 -- |
--- Copyright   : Anders Claesson 2012-2014
+-- Copyright   : Anders Claesson 2012-2015
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 -- License     : BSD-3
 --
@@ -7,7 +7,6 @@
 import           Data.List                    (intercalate)
 import           Data.Maybe                   (maybeToList)
 import           Data.Monoid
-import qualified Data.Text.IO                 as IO
 import           Data.ByteString              (ByteString)
 import qualified Data.ByteString.Char8        as Ch8
 import           System.IO                    (isEOF)
@@ -172,7 +171,7 @@ main = do
          | version opts = putStrLn . nameVer
          | update opts = DB.update
          | listTransforms opts = const $ mapM_ (putStrLn . name) transforms
-         | anum > 0 = \c -> lookupSeq <$> DB.read c >>= mapM_ IO.putStrLn
+         | anum > 0 = \c -> lookupSeq <$> DB.read c >>= mapM_ Ch8.putStrLn
          | filtr opts = \c -> DB.read c >>= filterDB opts >>= mapM_ Ch8.putStrLn
          | not (null tname) = const $ applyTransform opts tname
          | local opts = search (\o cfg -> grepDB o <$> DB.read cfg) opts
