@@ -22,11 +22,12 @@ source-repository head
 
 Executable sloane
   Main-is:             sloane.hs
-  Other-Modules:       Sloane.DB
+  Other-Modules:       Sloane.Types
+                       Sloane.Parse
                        Sloane.Config
                        Sloane.GF
                        Sloane.Transform
-  ghc-options:         -Wall
+  ghc-options:         -Wall -fno-warn-unused-do-bind
   Build-depends:       base >=3 && <5,
                        containers >=0.5,
                        optparse-applicative >=0.10.0,
@@ -41,4 +42,5 @@ Executable sloane
                        filepath >=1.3,
                        directory >=1.2,
                        zlib >=0.5,
+                       attoparsec,
                        stringsearch >=0.3.0

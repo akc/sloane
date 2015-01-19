@@ -4,21 +4,30 @@
 -- License     : BSD-3
 --
 
-import           Data.List                    (intercalate)
-import           Data.Maybe                   (maybeToList)
-import           Data.Monoid
-import           Data.ByteString              (ByteString)
-import qualified Data.ByteString.Char8        as Ch8
-import           System.IO                    (isEOF)
-import           Network.HTTP                 (urlEncodeVars)
-import           Network.Curl.Download        (openURI)
-import           Options.Applicative
-import           Sloane.Config
-import           Sloane.DB                    (DB, ANumber, Seq)
-import qualified Sloane.DB                    as DB
-import           Sloane.Transform
-
-type URL = String
+import Data.List
+import Data.Maybe
+import Data.Monoid
+import Data.Map ((!))
+import qualified Data.Map as M
+import Data.ByteString (ByteString)
+import qualified Data.ByteString.Char8 as B
+import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.Search as S
+import Data.Text.Encoding (decodeUtf8)
+import qualified Data.Text as T
+import qualified Data.Text.IO as IO
+import Codec.Compression.GZip (decompress)
+import Network.HTTP (urlEncodeVars)
+import Network.Curl.Download (openURI)
+import Options.Applicative
+import Control.Monad
+import System.Directory
+import System.IO
+import System.Console.ANSI
+import Sloane.Types
+import Sloane.Parse
+import Sloane.Config
+import Sloane.Transform
 
 data Options = Options
     { full    :: Bool     -- Print all fields?
@@ -36,57 +45,117 @@ data Options = Options
     , terms   :: [String] -- Search terms
     }
 
-oeisKeys :: String
-oeisKeys = "ISTUVWXNDHFYAOEeptoKC" -- Valid OEIS keys
+aNums :: Reply -> [ANum]
+aNums = M.keys
 
-oeisUrls :: Config -> DB -> [URL]
-oeisUrls cfg = map ((oeisHost cfg ++) . Ch8.unpack) . DB.aNumbers
-
-oeisLookup :: Options -> Config -> IO DB
-oeisLookup opts cfg =
-    (either error DB.parseOEISEntries) <$>
-    openURI (oeisURL cfg ++ "&" ++ urlEncodeVars [("n", show n), ("q", q)])
+grep :: PackedSeq -> SeqDB -> [PackedANum]
+grep q db = mapMaybe locateANum (S.indices q db)
   where
-    n = limit opts
-    q = unwords $ terms opts
+    locateANum i = listToMaybe
+        [ B.take 7 v
+        | j <- [i,i-1..0]
+        , B.index db j == 'A'
+        , let (_,v) = B.splitAt j db
+        ]
 
-grepDB :: Options -> DB -> DB
-grepDB opts = DB.take n . DB.grep (Ch8.pack q)
+member :: PackedSeq -> SeqDB -> Bool
+member q = null . grep q
+
+invert' :: Options -> Bool -> Bool
+invert' opts = if invert opts then id else not
+
+filterSeqsIO :: Options -> SeqDB -> IO [PackedSeq]
+filterSeqsIO opts db =
+    filterSeqs opts db . map dropComment . B.lines <$> B.getContents
   where
-    n = limit opts
-    q = intercalate "," (terms opts)
+    dropComment = B.takeWhile (/='#')
+
+filterSeqs :: Options -> SeqDB -> [ByteString] -> [PackedSeq]
+filterSeqs opts db = filter (\q -> invert' opts (q `member` db)) . map parseSeq
+
+readSeqDB :: Config -> IO SeqDB
+readSeqDB cfg = B.readFile (seqDBPath cfg)
+
+readNamesDB :: Config -> IO NamesDB
+readNamesDB cfg = B.readFile (namesDBPath cfg)
+
+mkReply :: SeqMap -> NamesMap -> [ANum] -> Reply
+mkReply s n = M.fromList . map (\k -> (k, M.fromList [('S', [s!k]), ('N', [n!k])]))
+
+putReply :: Config -> [Key] -> Reply -> IO ()
+putReply cfg ks reply = do
+    unless (M.null reply) $ putStrLn ""
+    forM_ (M.toList reply) $ \(anum, fields) -> do
+        forM_ (ks `intersect` M.keys fields) $ \key -> do
+            let entry = fields ! key
+            forM_ entry $ \line -> do
+                let line' = decodeUtf8 line
+                setSGR [ SetColor Foreground Dull Green ]
+                putStr [key]
+                setSGR [ SetColor Foreground Dull Yellow ]
+                putStr " " >> B.putStr (packANum anum)
+                setSGR []
+                putStr " " >> IO.putStrLn (crop key (termWidth cfg - 10) line')
+        putStrLn ""
+  where
+    cropText f cap s = if cap < T.length s then f cap s else s
+    crop key =
+      if key `elem` ['S'..'X']
+        then cropText $ \cap -> T.reverse . T.dropWhile (/= ',') . T.reverse . T.take cap
+        else cropText $ \cap s -> T.take (cap-2) s `T.append` T.pack ".."
+
+putReply' :: Options -> Config -> Reply -> IO ()
+putReply' opts cfg
+    | url opts  = putStr . unlines . oeisUrls cfg
+    | otherwise = putReply cfg (if full opts then oeisKeys else keys opts)
+
+oeisUrls :: Config -> Reply -> [URL]
+oeisUrls cfg = map ((oeisHost cfg ++) . B.unpack . packANum) . aNums
+
+oeisLookup :: Int -> String -> Config -> IO Reply
+oeisLookup n term cfg =
+    either error parseReply <$>
+    openURI (oeisURL cfg ++ "&" ++ urlEncodeVars [("n", show n), ("q", term)])
 
 applyTransform :: Options -> String -> IO ()
 applyTransform opts tname =
     case lookupTranform tname of
       Nothing -> error "No transform with that name"
-      Just f  -> case f $$ input of
-                   [] -> return ()
-                   cs -> putStrLn (showSeq cs)
+      Just f  -> forM_ (terms opts) $ \input ->
+                     case f $$ parseIntSeq (B.pack input) of
+                       [] -> return ()
+                       cs -> B.putStrLn (packIntSeq cs)
+
+getTerms :: Options -> IO Options
+getTerms opts
+    | dont      = return opts
+    | otherwise = (\xs -> opts {terms = xs}) <$>
+        case terms opts of
+          [] -> isEOF >>= \b ->
+                  if b then error "<stdin>: end of file"
+                       else lines <$> getContents
+          ts -> return ts
   where
-    tr c  = if c `elem` ";," then ' ' else c
-    input = map read (words (map tr (unwords (terms opts))))
+    dont = or [ filtr opts
+              , anumber opts > 0
+              , listTransforms opts
+              , update opts
+              , version opts
+              ]
 
-dropComment :: ByteString -> ByteString
-dropComment = Ch8.takeWhile (/= '#')
+takeUniq :: Eq a => Int -> [a] -> [a]
+takeUniq n = take n . map head . group
 
-showSeq :: [Integer] -> String
-showSeq = intercalate "," . map show
-
-mkSeq :: ByteString -> Seq
-mkSeq = Ch8.intercalate (Ch8.pack ",") . Ch8.words . clean . dropComment
-  where
-    clean = Ch8.filter (`elem` " 0123456789-") . Ch8.map tr
-    tr c  = if c `elem` ";," then ' ' else c
-
-mkANumber :: Int -> ANumber
-mkANumber n = let s = show n in Ch8.pack ('A' : replicate (6-length s) '0' ++ s)
-
-filterDB :: Options -> DB -> IO [Seq]
-filterDB opts db = filter match . parseSeqs <$> Ch8.getContents
-  where
-    match q = (if invert opts then id else not) (DB.null $ DB.grep q db)
-    parseSeqs = filter (not . Ch8.null) . map mkSeq . Ch8.lines
+updateDBs :: Config -> IO ()
+updateDBs cfg = do
+    let decomp = BL.toStrict . decompress . BL.fromStrict
+    let write path = either error (B.writeFile path . decomp)
+    createDirectoryIfMissing False (sloaneDir cfg)
+    putStrLn $ "Downloading " ++ strippedURL cfg
+    write (seqDBPath cfg) =<< openURI (strippedURL cfg)
+    putStrLn $ "Downloading " ++ namesURL cfg
+    write (namesDBPath cfg) =<< openURI (namesURL cfg)
+    putStrLn "Done."
 
 optionsParser :: Parser Options
 optionsParser =
@@ -128,7 +197,7 @@ optionsParser =
         ( long "transform"
        <> metavar "NAME"
        <> value ""
-       <> help "Apply the named transform to input sequence")
+       <> help "Apply the named transform to input sequence" )
     <*> switch
         ( long "list-transforms"
        <> help "List the names of all transforms" )
@@ -140,40 +209,32 @@ optionsParser =
        <> help "Show version info" )
     <*> many (argument str (metavar "TERMS...")))
 
-search :: (Options -> Config -> IO DB) -> Options -> Config -> IO ()
-search f opts cfg = f opts cfg >>= put
-  where
-    put | url opts  = putStr . unlines . oeisUrls cfg
-        | otherwise = DB.put cfg $ if full opts then oeisKeys else keys opts
-
-getTerms :: Options -> IO Options
-getTerms opts
-    | dont      = return opts
-    | otherwise = (\xs -> opts {terms = xs}) <$>
-        case terms opts of
-          [] -> isEOF >>= \b ->
-                  if b then error "<stdin>: end of file"
-                       else return <$> getLine
-          ts -> return ts
-  where
-    dont = or [ filtr opts, anumber opts > 0
-              , listTransforms opts, update opts
-              , version opts
-              ]
-
 main :: IO ()
 main = do
+    hSetBuffering stdout LineBuffering
     opts <- getTerms =<< execParser (info optionsParser fullDesc)
+    let n = limit opts
+    let ts = terms opts
     let tname = transform opts
     let anum = anumber opts
-    let lookupSeq = maybeToList . DB.lookupSeq (mkANumber anum)
-    let sloane
-         | version opts = putStrLn . nameVer
-         | update opts = DB.update
-         | listTransforms opts = const $ mapM_ (putStrLn . name) transforms
-         | anum > 0 = \c -> lookupSeq <$> DB.read c >>= mapM_ Ch8.putStrLn
-         | filtr opts = \c -> DB.read c >>= filterDB opts >>= mapM_ Ch8.putStrLn
-         | not (null tname) = const $ applyTransform opts tname
-         | local opts = search (\o cfg -> grepDB o <$> DB.read cfg) opts
-         | otherwise = search oeisLookup opts
+    let lookupSeq = maybeToList . M.lookup anum
+    let sloane c
+         | version opts = putStrLn (nameVer c)
+         | update opts = updateDBs c
+         | listTransforms opts = mapM_ (putStrLn . name) transforms
+         | anum > 0 = lookupSeq . parseSeqMap <$> readSeqDB c >>= mapM_ B.putStrLn
+         | filtr opts = readSeqDB c >>= filterSeqsIO opts >>= mapM_ B.putStrLn
+         | not (null tname) = applyTransform opts tname
+         | local opts = do
+             sm <- parseSeqMap <$> readSeqDB c
+             nm <- parseNamesMap <$> readNamesDB c
+             let nts = length ts
+             forM_ ts $ \term -> do
+                 let q  = parseSeq (B.pack term)
+                 let q' = anchorSeq q
+                 let f  = mkReply sm nm . map parseANum . takeUniq n . grep q'
+                 when (nts > 1) $ putStr "seq: " >> B.putStrLn q
+                 readSeqDB c >>= putReply' opts c . f
+         | otherwise =
+             oeisLookup n (unwords ts) c >>= putReply' opts c
     defaultConfig >>= sloane
