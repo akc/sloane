@@ -39,6 +39,7 @@ import qualified Data.Text                  as T
 import qualified Data.Text.IO               as IO
 import           Data.Text.Encoding         (decodeUtf8)
 import           Control.Monad              (forM_, unless)
+import           Control.Applicative        ((<$>))
 import qualified Codec.Compression.GZip     as GZ
 import           Network.Curl.Download      (openURI)
 import           System.Console.ANSI
@@ -69,9 +70,9 @@ update :: Config -> IO ()
 update cfg = do
     createDirectoryIfMissing False (sloaneDir cfg)
     putStrLn $ "Downloading " ++ sURL cfg
-    dbS <- either error (return . mkDB 'S') =<< openURI (sURL cfg)
+    dbS <- either error (mkDB 'S') <$> openURI (sURL cfg)
     putStrLn $ "Downloading " ++ nURL cfg
-    dbN <- either error (return . mkDB 'N') =<< openURI (nURL cfg)
+    dbN <- either error (mkDB 'N') <$> openURI (nURL cfg)
     putStrLn "Building database"
     write cfg $ unionDB dbS dbN
     putStrLn "Done."
@@ -85,7 +86,7 @@ update cfg = do
 read :: Config -> IO DB
 read cfg = doesFileExist (sloaneDB cfg) >>= \updated ->
     if updated
-        then B.readFile (sloaneDB cfg) >>= either error return . decompressDB
+        then either error id . decompressDB <$> B.readFile (sloaneDB cfg)
         else error $ "No local database found. " ++
                      "You need to run \"sloane --update\" first."
 

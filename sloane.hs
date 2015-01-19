@@ -44,7 +44,7 @@ oeisUrls cfg = map ((oeisHost cfg ++) . Ch8.unpack) . DB.aNumbers
 
 oeisLookup :: Options -> Config -> IO DB
 oeisLookup opts cfg =
-    (DB.parseOEISEntries . either error id) <$>
+    (either error DB.parseOEISEntries) <$>
     openURI (oeisURL cfg ++ "&" ++ urlEncodeVars [("n", show n), ("q", q)])
   where
     n = limit opts
