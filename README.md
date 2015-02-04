@@ -1,6 +1,6 @@
 ---
 title: SLOANE(1) Sloane User Manual | Version 2.0.5
-date: 7 Jan 2015
+date: 4 Feb 2015
 ---
 
 # NAME
@@ -10,13 +10,13 @@ On-Line Encyclopedia of Integer Sequences <http://oeis.org>
 
 # SYNOPSIS
 
-sloane [-a|--all] [-k KEYS] [-n N] [--url] [--local] TERMS...
+sloane [-l|--long] [-k KEYS] [-n N] [-a|--all] [--url] [-q|--quick] [--nocolor] TERMS...
 
 sloane -A NUMBER
 
 sloane --filter [--invert]
 
-sloane --transform NAME
+sloane (-t|--transform) NAME
 
 sloane (--list-transforms | --update | --version | --help)
 
@@ -32,7 +32,7 @@ returns entry A000110 (Bell numbers), and four more entries.  One can
 also search by sequence id (A-number), or even search for arbitrary
 words. See the **EXAMPLES** section.
 
-Alternatively, using the `--local` option, the search can be done
+Alternatively, using the `--quick` option, the search can be done
 locally against a downloaded local database of known sequences. This
 mode works by "grepping" for the query in the sequence field.
 
@@ -49,17 +49,17 @@ returns the subset of the sequences in *FILE* that are in the local
 database. To also look-up the names of those sequences one could, for
 instance, run
 
-    sloane --filter <FILE | xargs -L1 --verbose sloane --local
+    sloane --filter <FILE | sloane -q
 
 Sloane normally crops long lines to fit the widths of the terminal. If
 this is unwanted, pipe the output through cat or less:
 
-    sloane -a id:A000110 | less -R
+    sloane -l id:A000110 | less -R
 
 # OPTIONS
 
--a, --all
-:   Print all fields
+-l, --long
+:   Long format; print all fields
 
 -k *KEYS*
 :   Keys of fields to print (default: SN)
@@ -67,11 +67,19 @@ this is unwanted, pipe the output through cat or less:
 -n *N*
 :   Fetch at most this many entries (default: 5)
 
+-a, --all
+:   Fetch all matching entries (equivalent to -n 999999)
+
 --url
 :   Print URLs of found entries (but nothing else)
 
---local
-:   Grep for a sequence in the local database.
+--nocolor
+:   Do not colorize the output. Useful when piping the output to another
+    program.
+
+-q, --quick
+:   Do a 'quick' offline search by 'grepping' for a sequence in the
+    local database.
 
 -A *NUMBER*
 :   Fetch the sequence with this number from the local database. Prints
@@ -85,7 +93,7 @@ this is unwanted, pipe the output through cat or less:
 :   Return sequences *not* in the database. This option has no effect
     unless `--filter` is also set.
 
---transform *NAME*
+-t, --transform *NAME*
 :   Apply the named transform to the input sequence. If the resulting
     sequence is integral print it to stdout; else print nothing.
     Most of the transforms and their names are taken from
@@ -130,9 +138,12 @@ one can use the url option:
 
     firefox `sloane --url -n 3 "(2+2)-free posets"`
 
-To retrieve sequence A022493 from the local database use the `-A` option:
+As more involved example we retrieve sequence A000045 (the
+Fibonacci sequence) from the local database, take the first 20 terms of
+that sequence, apply the BINOMIAL transform, and look-up the resulting
+sequence.
 
-    sloane -A022493
+    sloane -A000045 | cut -d, -f1-20 | sloane -tBINOMIAL | sloane -q
 
 In the final example the local database is used to filter out sequences
 from the standard input that are in OEIS:
