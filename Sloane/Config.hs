@@ -30,7 +30,7 @@ defaultConfig :: IO Config
 defaultConfig = do
     w <- maybe maxBound width `fmap` size
     h <- getHomeDirectory
-    let c = Config { nameVer     = "sloane 2.0.5"
+    let c = Config { nameVer     = "sloane 3.0.0"
                    , home        = h
                    , sloaneDir   = h </> ".sloane"
                    , seqDBPath   = sloaneDir c </> "stripped"

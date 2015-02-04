@@ -1,5 +1,5 @@
 ---
-title: SLOANE(1) Sloane User Manual | Version 2.0.5
+title: SLOANE(1) Sloane User Manual | Version 3.0.0
 date: 4 Feb 2015
 ---
 
