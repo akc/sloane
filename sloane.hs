@@ -9,6 +9,9 @@ import Data.Maybe
 import Data.Monoid
 import Data.Map ((!))
 import qualified Data.Map as M
+import Data.Conduit hiding (($$))
+import Data.Conduit.Zlib (ungzip)
+import qualified Data.Conduit.Binary as CB
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy as BL
@@ -16,10 +19,9 @@ import qualified Data.ByteString.Search as S
 import Data.Text.Encoding (decodeUtf8)
 import qualified Data.Text as T
 import qualified Data.Text.IO as IO
-import Codec.Compression.GZip (decompress)
-import Network.HTTP (urlEncodeVars)
-import Network.Curl.Download (openURI)
+import Network.HTTP.Conduit
 import Options.Applicative
+import Control.Monad.IO.Class (liftIO)
 import Control.Monad
 import System.Directory
 import System.IO
@@ -118,9 +120,13 @@ oeisUrls :: Config -> Reply -> [URL]
 oeisUrls cfg = map ((oeisHost cfg ++) . B.unpack . packANum) . aNums
 
 oeisLookup :: Int -> String -> Config -> IO Reply
-oeisLookup n term cfg =
-    either error parseReply <$>
-    openURI (oeisURL cfg ++ "&" ++ urlEncodeVars [("n", show n), ("q", term)])
+oeisLookup cap term cfg = do
+    let n   = (B.pack "n", Just (B.pack (show cap)))
+    let q   = (B.pack "q", Just (B.pack term))
+    let fmt = (B.pack "fmt", Just (B.pack "text"))
+    req <- setQueryString [fmt, n, q] <$> parseUrl (oeisURL cfg)
+    res <- withManager $ httpLbs req
+    return $ parseReply $ BL.toStrict $ responseBody res
 
 applyTransform :: Options -> String -> IO ()
 applyTransform opts tname =
@@ -149,14 +155,21 @@ takeUniq n = take n . map head . group
 
 updateDBs :: Config -> IO ()
 updateDBs cfg = do
-    let decomp = BL.toStrict . decompress . BL.fromStrict
-    let write path = either error (B.writeFile path . decomp)
     createDirectoryIfMissing False (sloaneDir cfg)
-    putStrLn $ "Downloading " ++ strippedURL cfg
-    write (seqDBPath cfg) =<< openURI (strippedURL cfg)
-    putStrLn $ "Downloading " ++ namesURL cfg
-    write (namesDBPath cfg) =<< openURI (namesURL cfg)
-    putStrLn "Done."
+    putStr $ "Downloading " ++ strippedURL cfg
+    putStr " " >> download (strippedURL cfg) (seqDBPath cfg)
+    putStr $ "\nDownloading " ++ namesURL cfg
+    putStr " " >> download (namesURL cfg) (namesDBPath cfg)
+    putStrLn "\nDone."
+  where
+    download uri fpath = withManager $ \manager -> do
+        req <- parseUrl uri
+        res <- http req manager
+        responseBody res $$+- progress 0 =$ ungzip =$ CB.sinkFile fpath
+    progress cnt = await >>= maybe (return ()) (\bs -> do
+        when (cnt `mod` 25 == 0) $ liftIO (putStr "." >> hFlush stdout)
+        yield bs
+        progress (cnt + 1 :: Integer))
 
 optionsParser :: Parser Options
 optionsParser =

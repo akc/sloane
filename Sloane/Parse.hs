@@ -41,9 +41,6 @@ parse_ f t =
 spc :: Parser Char
 spc = char ' '
 
-comma :: Parser Char
-comma = char ','
-
 rest :: Parser ByteString
 rest = A.takeTill isEndOfLine <* endOfLine
 

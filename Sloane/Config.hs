@@ -36,7 +36,7 @@ defaultConfig = do
                    , seqDBPath   = sloaneDir c </> "stripped"
                    , namesDBPath = sloaneDir c </> "names"
                    , oeisHost    = "https://oeis.org/"
-                   , oeisURL     = oeisHost c ++ "search?fmt=text"
+                   , oeisURL     = oeisHost c ++ "search"
                    , strippedURL = oeisHost c ++ "stripped.gz"
                    , namesURL    = oeisHost c ++ "names.gz"
                    , termWidth   = w
