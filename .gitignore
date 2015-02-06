@@ -7,6 +7,7 @@ cabal-dev
 *.chs.h
 sloane.1
 sloane.html
+README.html
 TODO.md
 result
 tests/failures.txt

@@ -1,5 +1,5 @@
-sloane.1: README.md
-	pandoc -s -t man README.md -o sloane.1
+sloane.1: sloane.md
+	pandoc -s -t man sloane.md -o sloane.1
 
-sloane.html: README.md
-	pandoc -s -t html README.md -o sloane.html
+README.html: README.md
+	pandoc -s -t html README.md -o README.html
