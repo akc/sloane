@@ -42,7 +42,7 @@ grep q db = mapMaybe locateANum (S.indices q db)
 
 filterSeqsIO :: Options -> SeqDB -> IO [PackedSeq]
 filterSeqsIO opts db =
-    filter memberNotMember . map (dropComment . parseSeq) <$> getNonEmptyLines
+    filter memberNotMember . map (parseSeq . dropComment) <$> getNonEmptyLines
   where
     dropComment = B.takeWhile (/='#')
     getNonEmptyLines = filter (not . B.null) . B.lines <$> B.getContents
