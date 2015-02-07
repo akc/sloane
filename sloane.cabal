@@ -37,7 +37,7 @@ Executable sloane
                        conduit >=1,
                        conduit-extra >=1,
                        http-conduit >=2,
-                       bytestring >=0.9,
+                       bytestring >=0.10,
                        stringsearch >=0.3,
                        text >=0.11,
                        ansi-terminal >=0.6,
