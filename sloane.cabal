@@ -24,6 +24,7 @@ Executable sloane
   Main-is:             sloane.hs
   Other-Modules:       Sloane.Types
                        Sloane.Parse
+                       Sloane.ParseOptions
                        Sloane.Config
                        Sloane.GF
                        Sloane.Transform
