@@ -4,10 +4,7 @@
 -- License     : BSD-3
 --
 
-module Sloane.ParseOptions
-    ( Options (..)
-    , getOptions
-    ) where
+module Sloane.ParseOptions (Options (..), getOptions) where
 
 import Options.Applicative
 import System.IO
@@ -105,5 +102,9 @@ getTerms opts
     doNothing = version opts || anumber opts > 0 || filtr opts
               || update opts || listTransforms opts
 
+setKeys :: Options -> Options
+setKeys opts =
+    if longFormat opts then opts {keys = "ISTUVWXNDHFYAOEeptoKC"} else opts
+
 getOptions :: IO Options
-getOptions = execParser (info optionsParser fullDesc) >>= getTerms
+getOptions = setKeys <$> execParser (info optionsParser fullDesc) >>= getTerms

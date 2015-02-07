@@ -3,7 +3,7 @@
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 -- License     : BSD-3
 --
-module Sloane.Config (Config (..), oeisKeys, defaultConfig) where
+module Sloane.Config (Config (..), defaultConfig) where
 
 import System.Console.Terminal.Size (width, size)
 import System.FilePath ((</>))
@@ -22,9 +22,6 @@ data Config = Config
     , namesURL    :: URL
     , termWidth   :: Int
     }
-
-oeisKeys :: String
-oeisKeys = "ISTUVWXNDHFYAOEeptoKC"
 
 defaultConfig :: IO Config
 defaultConfig = do

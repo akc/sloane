@@ -79,9 +79,8 @@ putReply cfg noColor ks reply = do
 putReplyOrUrls :: Options -> Config -> Reply -> IO ()
 putReplyOrUrls opts cfg
     | url opts  = putStr . unlines . oeisUrls
-    | otherwise = putReply cfg (nocolor opts) keys'
+    | otherwise = putReply cfg (nocolor opts) (keys opts)
   where
-    keys' = if longFormat opts then oeisKeys else keys opts
     oeisUrls = map ((oeisHost cfg ++) . B.unpack . packANum) . M.keys
 
 setQueryStr :: [(String, String)] -> Request -> Request
@@ -102,9 +101,6 @@ applyTransform opts tname =
                      case f $$ parseIntSeq (B.pack input) of
                        [] -> return ()
                        cs -> B.putStrLn (packIntSeq cs)
-
-takeUniq :: Eq a => Int -> [a] -> [a]
-takeUniq n = take n . map head . group
 
 updateDBs :: Config -> IO ()
 updateDBs cfg = do
@@ -142,7 +138,7 @@ sloane opts c
         forM_ ts $ \term -> do
              let q  = parseSeq (B.pack term)
              let q' = anchorSeq q
-             let f  = mkReply sm nm . map parseANum . takeUniq n . grep q'
+             let f  = mkReply sm nm . map parseANum . takeUniq . grep q'
              when (nts > 1) $ putStr "seq: " >> B.putStrLn q
              readSeqDB c >>= putReplyOrUrls opts c . f
     | otherwise = oeisLookup n (unwords ts) c >>= putReplyOrUrls opts c
@@ -151,6 +147,7 @@ sloane opts c
     ts = terms opts
     anum = anumber opts
     tname = transform opts
+    takeUniq = take n . map head . group
     lookupSeq = maybeToList . M.lookup anum
 
 main :: IO ()
