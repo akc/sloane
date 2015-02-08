@@ -22,6 +22,7 @@ module Sloane.Transform
     , tMOBIUS
     , tMOBIUSi
     , tEULER
+    , tEULERi
     , tEXP
     , tLOG
     , tNEGATE
@@ -189,10 +190,16 @@ tMOBIUSi = NT "MOBIUSi" $ \cs ->
 tEULER :: NamedTransform
 tEULER = NT "EULER" (\cs ->
     let f = product $ zipWith (\n c -> (1 - x^n)^^^c) [1::Int ..] cs
-    in drop 1 $ ogfCoeffs (1/f))
+    in drop 1 (ogfCoeffs (1/f)) ++ repeat 0)
 
 tEULERi :: NamedTransform
-tEULERi = NT "EULERi" undefined
+tEULERi = NT "EULERi" (\bs ->
+    let cs = ogfCoeffs $ ogf (zipWith (*) [0..] (0:bs)) / (1 + ogf (0:bs))
+    in [ sum [ mu (n `div` d) % n * (cs !! fromIntegral d)
+             | d <- [1..n], n `rem` d == 0
+             ]
+       | n <- [1..]
+       ])
 
 -- EXP converts [a_1, a_2, ...] to [b_1, b_2,...] where
 -- 1 + EGF_B (x) = exp EGF_A (x)
@@ -268,7 +275,7 @@ transforms =
     , tMOBIUS
     , tMOBIUSi
     , tEULER
---    , tEULERi
+    , tEULERi
     , tEXP
     , tLOG
     , tNEGATE

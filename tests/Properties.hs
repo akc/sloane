@@ -34,22 +34,28 @@ prop_BINOMIALi_BINOMIAL = forAll (resize 20 arbitrary) $ \cs ->
 prop_BINOMIAL_BINOMIALi = forAll (resize 20 arbitrary) $ \cs ->
     ((tBINOMIAL <> tBINOMIALi) $$ cs) == cs
 
-prop_MOBIUS_MOBIUSi cs = ((tMOBIUS <> tMOBIUSi) $$ cs) == cs
+prop_EULER_EULERi = forAll (resize 10 arbitrary) $ \cs ->
+    (tEULER $$ tEULERi $$ cs) == cs
 
-prop_MOBIUSi_MOBIUS cs = ((tMOBIUSi <> tMOBIUS) $$ cs) == cs
+prop_EULERi_EULER = forAll (resize 15 arbitrary) $ \cs ->
+    (tEULERi $$ tEULER $$ cs) == cs
+
+prop_MOBIUS_MOBIUSi cs = (tMOBIUS $$ tMOBIUSi $$ cs) == cs
+
+prop_MOBIUSi_MOBIUS cs = (tMOBIUSi $$ tMOBIUS $$ cs) == cs
 
 prop_LOG_EXP = forAll (resize 20 arbitrary) $ \cs ->
-    ((tLOG <> tEXP) $$ cs) == cs
+    (tLOG $$ tEXP $$ cs) == cs
 
 prop_EXP_LOG = forAll (resize 20 arbitrary) $ \cs ->
-    ((tEXP <> tLOG) $$ cs) == cs
+    (tEXP $$ tLOG $$ cs) == cs
 
 prop_CONVi_CONV = forAll (resize 20 arbitrary) $ \cs ->
-    not (null cs) && head cs > 0 ==> ((tCONVi <> tCONV) $$ cs) == cs
+    not (null cs) && head cs > 0 ==> (tCONVi $$ tCONV $$ cs) == cs
 
-prop_NEGATE_involutive cs = ((tNEGATE <> tNEGATE) $$ cs) == cs
+prop_NEGATE_involutive cs = (tNEGATE $$ tNEGATE $$ cs) == cs
 
-prop_BIN1_involutive cs = ((tBIN1 <> tBIN1) $$ cs) == cs
+prop_BIN1_involutive cs = (tBIN1 $$ tBIN1 $$ cs) == cs
 
 tests =
     [ checkUnit tLEFT [4,3,2,1] [3,2,1]
@@ -65,6 +71,7 @@ tests =
     , checkUnit tMOBIUS [1,3,4,7,6,12] [1,2,3,4,5,6]
     , checkUnit tMOBIUSi [1,2,3,4,5,6] [1,3,4,7,6,12]
     , checkUnit tEULER [1,1,0,0,0,0,0] [1,2,2,3,3,4,4]
+    , checkUnit tEULERi [1,2,2,3,3,4,4] [1,1,0,0,0,0,0]
     , checkUnit tEXP [1,2,3,4] [1,3,10,41]
     , checkUnit tLOG [1,3,10,41] [1,2,3,4]
     , checkUnit tCONV [1,2,3,4,5] [1,4,10,20,35]
@@ -84,8 +91,10 @@ tests =
     , ("eval/NoRuntimeError",    check 600 prop_NoRuntimeError)
     , ("LEFT.RIGHT==id",         check 100 prop_LEFT_RIGHT)
     , ("M2i.M2==id",             check 100 prop_M2i_M2)
+    , ("BINOMIAL.BINOMIALi==id", check 100 prop_BINOMIAL_BINOMIALi)
     , ("BINOMIALi.BINOMIAL==id", check 100 prop_BINOMIALi_BINOMIAL)
-    , ("BINOMIALi.BINOMIAL==id", check 100 prop_BINOMIALi_BINOMIAL)
+    , ("EULER.EULERi==id",       check 100 prop_EULER_EULERi)
+    , ("EULERi.EULER==id",       check 100 prop_EULERi_EULER)
     , ("MOBIUS.MOBIUSi==id",     check 100 prop_MOBIUS_MOBIUSi)
     , ("MOBIUSi.MOBIUS==id",     check 100 prop_MOBIUSi_MOBIUS)
     , ("EXP.LOG==id",            check 100 prop_EXP_LOG)
