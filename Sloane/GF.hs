@@ -43,6 +43,8 @@ instance (Eq a, Fractional a) => Fractional (Series a) where
      fromRational c = Series [fromRational c]
      (/) = lift2 divide
 
+infixr 7 `o`
+
 degree :: (Num a, Eq a) => Series a -> Int
 degree (Series [0]) = -1
 degree (Series cs)  = length cs - 1

@@ -10,6 +10,8 @@ module Sloane.Transform
     , tRIGHT
     , tM2
     , tM2i
+    , tAERATE1
+    , tAERATE2
     , tBINOMIAL
     , tBINOMIALi
     , tBIN1
@@ -50,8 +52,9 @@ import Sloane.GF
 type Transform = [Rational] -> [Rational]
 
 data NamedTransform = NT
-    { name :: String
-    , eval :: Transform
+    { name   :: String
+    , growth :: Int -> Int
+    , eval   :: Transform
     }
 
 instance Show NamedTransform where
@@ -61,11 +64,12 @@ instance Eq NamedTransform where
     t == s = name t == name s
 
 instance Monoid NamedTransform where
-    mempty = NT "" id
-    mappend f g = NT tname teval
+    mempty = NT "" id id
+    mappend f g = NT tname tgrowth teval
       where
-        tname = name f ++ "." ++ name g
-        teval = eval f     .     eval g
+        tname   = name f ++ "." ++ name g
+        tgrowth = growth f   .   growth g
+        teval   = eval f     .     eval g
 
 infixr 0 $$
 
@@ -76,7 +80,7 @@ toIntSeq :: [Rational] -> [Integer]
 toIntSeq cs = [ numerator c | c <- cs, all isInteger cs ]
 
 ($$) :: NamedTransform -> [Integer] -> [Integer]
-f $$ cs = toIntSeq $ take (length cs) (eval f (map toRational cs))
+f $$ cs = toIntSeq $ take (growth f (length cs)) (eval f (map toRational cs))
 
 x :: GF
 x = ogf [0::Integer, 1]
@@ -120,47 +124,53 @@ signed :: GF -> GF
 signed = imap $ \i c -> (-1%1)^i * c
 
 tLEFT :: NamedTransform
-tLEFT = NT "LEFT" (drop 1)
+tLEFT = NT "LEFT" pred (drop 1)
 
 tRIGHT :: NamedTransform
-tRIGHT = NT "RIGHT" (1:)
+tRIGHT = NT "RIGHT" succ (1:)
 
 tM2 :: NamedTransform
-tM2 = NT "M2" f where f [] = []; f (c:cs) = c : map ((2%1)*) cs
+tM2 = NT "M2" id f where f [] = []; f (c:cs) = c : map ((2%1)*) cs
 
 tM2i :: NamedTransform
-tM2i = NT "M2i" (ogfCoeffs . Series . f)
+tM2i = NT "M2i" id (ogfCoeffs . Series . f)
   where
     f [] = []
     f cs = let (d:ds) = map toRational cs in d : map (/(2%1)) ds
 
+tAERATE1 :: NamedTransform
+tAERATE1 = NT "AERATE1" (\n -> n*2-1) (\cs -> ogfCoeffs $ ogf cs `o` x^(2::Int))
+
+tAERATE2 :: NamedTransform
+tAERATE2 = NT "AERATE2" (\n -> n*3-2) (\cs -> ogfCoeffs $ ogf cs `o` x^(3::Int))
+
 tBINOMIAL :: NamedTransform
-tBINOMIAL = NT "BINOMIAL" (\cs -> egfCoeffs (expSeries (1%1) * egf cs))
+tBINOMIAL = NT "BINOMIAL" id (\cs -> egfCoeffs (expSeries (1%1) * egf cs))
 
 tBINOMIALi :: NamedTransform
-tBINOMIALi = NT "BINOMIALi" (\cs -> egfCoeffs (expSeries ((-1)%1) * egf cs))
+tBINOMIALi = NT "BINOMIALi" id (\cs -> egfCoeffs (expSeries ((-1)%1) * egf cs))
 
 tBIN1 :: NamedTransform
-tBIN1 = NT "BIN1" (\cs ->
+tBIN1 = NT "BIN1" id (\cs ->
     drop 1 . egfCoeffs $ -expSeries (-1%1) * signed (egf (0:cs)))
 
 tBISECT0 :: NamedTransform
-tBISECT0 = NT "BISECT0" bisect0
+tBISECT0 = NT "BISECT0" (\n -> (n+1) `div` 2) bisect0
 
 tBISECT1 :: NamedTransform
-tBISECT1 = NT "BISECT1" bisect1
+tBISECT1 = NT "BISECT1" (`div` 2) bisect1
 
 tCONV :: NamedTransform
-tCONV = NT "CONV" (\cs -> ogfCoeffs (ogf cs ^ (2::Int)))
+tCONV = NT "CONV" id (\cs -> ogfCoeffs (ogf cs ^ (2::Int)))
 
 tCONVi :: NamedTransform
-tCONVi = NT "CONVi" (ogfCoeffs . squareRoot . ogf)
+tCONVi = NT "CONVi" id (ogfCoeffs . squareRoot . ogf)
 
 tEXPCONV :: NamedTransform
-tEXPCONV = NT "EXPCONV" (\cs -> egfCoeffs (egf cs ^ (2::Int)))
+tEXPCONV = NT "EXPCONV" id (\cs -> egfCoeffs (egf cs ^ (2::Int)))
 
 tDIFF :: NamedTransform
-tDIFF = NT "DIFF" (\cs -> zipWith (-) (drop 1 cs) cs)
+tDIFF = NT "DIFF" pred (\cs -> zipWith (-) (drop 1 cs) cs)
 
 -- The Mobius function of the poset of integers under divisibility
 mobius :: Integer -> Integer -> Integer
@@ -174,7 +184,7 @@ mu :: Integer -> Integer
 mu = mobius 1
 
 tMOBIUS :: NamedTransform
-tMOBIUS = NT "MOBIUS" $ \cs ->
+tMOBIUS = NT "MOBIUS" id $ \cs ->
     [ sum [mu (n `div` k) % 1 * (cs !! (fromInteger k-1))
           | k<-[1..n], n `rem` k == 0
           ]
@@ -182,18 +192,18 @@ tMOBIUS = NT "MOBIUS" $ \cs ->
     ]
 
 tMOBIUSi :: NamedTransform
-tMOBIUSi = NT "MOBIUSi" $ \cs ->
+tMOBIUSi = NT "MOBIUSi" id $ \cs ->
     [ sum [ cs !! (fromInteger k-1) | k<-[1..n], n `rem` k == 0 ]
     | (n,_) <- zip [1..] cs
     ]
 
 tEULER :: NamedTransform
-tEULER = NT "EULER" (\cs ->
+tEULER = NT "EULER" id (\cs ->
     let f = product $ zipWith (\n c -> (1 - x^n)^^^c) [1::Int ..] cs
     in drop 1 (ogfCoeffs (1/f)) ++ repeat 0)
 
 tEULERi :: NamedTransform
-tEULERi = NT "EULERi" (\bs ->
+tEULERi = NT "EULERi" id (\bs ->
     let cs = ogfCoeffs $ ogf (zipWith (*) [0..] (0:bs)) / (1 + ogf (0:bs))
     in [ sum [ mu (n `div` d) % n * (cs !! fromIntegral d)
              | d <- [1..n], n `rem` d == 0
@@ -204,52 +214,52 @@ tEULERi = NT "EULERi" (\bs ->
 -- EXP converts [a_1, a_2, ...] to [b_1, b_2,...] where
 -- 1 + EGF_B (x) = exp EGF_A (x)
 tEXP :: NamedTransform
-tEXP = NT "EXP" (\cs -> drop 1 . egfCoeffs $ expSeries 1 `o` egf (0:cs))
+tEXP = NT "EXP" id (\cs -> drop 1 . egfCoeffs $ expSeries 1 `o` egf (0:cs))
 
 -- LOG converts [a_1, a_2, ...] to [b_1, b_2,...] where
 -- 1 + EGF_A (x) = exp EGF_B (x) i.e. EGF_B (x) = log(1 + EGF_A (x)).
 tLOG :: NamedTransform
-tLOG = NT "LOG" (\cs -> drop 1 $ egfCoeffs (log1 `o` (-1 * egf (0:cs))))
+tLOG = NT "LOG" id (\cs -> drop 1 $ egfCoeffs (log1 `o` (-1 * egf (0:cs))))
   where
     log1 = Series (0 : [-1 % n | n <- [1..]])
 
 tNEGATE :: NamedTransform
-tNEGATE = NT "NEGATE" f where f [] = []; f (c:cs) = c : map negate cs
+tNEGATE = NT "NEGATE" id f where f [] = []; f (c:cs) = c : map negate cs
 
 tPRODS :: NamedTransform
-tPRODS = NT "PRODS" (drop 1 . scanl (*) (1%1))
+tPRODS = NT "PRODS" id (drop 1 . scanl (*) (1%1))
 
 tPSUM :: NamedTransform
-tPSUM = NT "PSUM" (drop 1 . scanl (+) (0%1))
+tPSUM = NT "PSUM" id (drop 1 . scanl (+) (0%1))
 
 tPSUMSIGN :: NamedTransform
-tPSUMSIGN = NT "PSUMSIGN" (ogfCoeffs . (geoSeries (-1%1) *) . ogf)
+tPSUMSIGN = NT "PSUMSIGN" id (ogfCoeffs . (geoSeries (-1%1) *) . ogf)
 
 tSTIRLING :: NamedTransform
-tSTIRLING = NT "STIRLING" (\cs ->
+tSTIRLING = NT "STIRLING" id (\cs ->
     drop 1 . egfCoeffs $ egf (0:cs) `o` (expSeries (1%1) - 1))
 
 tTRISECT0 :: NamedTransform
-tTRISECT0 = NT "TRISECT0" trisect0
+tTRISECT0 = NT "TRISECT0" (\n -> (n+2) `div` 3) trisect0
 
 tTRISECT1 :: NamedTransform
-tTRISECT1 = NT "TRISECT1" trisect1
+tTRISECT1 = NT "TRISECT1" (\n -> (n+1) `div` 3) trisect1
 
 tTRISECT2 :: NamedTransform
-tTRISECT2 = NT "TRISECT2" trisect2
+tTRISECT2 = NT "TRISECT2" (`div` 3) trisect2
 
 tPOINT :: NamedTransform
-tPOINT = NT "POINT" (zipWith (*) [0..])
+tPOINT = NT "POINT" id (zipWith (*) [0..])
 
 tWEIGHT :: NamedTransform
-tWEIGHT = NT "WEIGHT" $
+tWEIGHT = NT "WEIGHT" id $
     drop 1 . ogfCoeffs . product . zipWith (\n c -> (1 + x^n)^^^c) [1::Int ..]
 
 increasing :: Ord a => [a] -> Bool
 increasing cs = and $ zipWith (<=) cs (drop 1 cs)
 
 tPARTITION :: NamedTransform
-tPARTITION = NT "PARTITION" $ \cs -> do
+tPARTITION = NT "PARTITION" id $ \cs -> do
     guard $ not (null cs) && all (>0) cs && increasing cs
     let f = product $ map (\c -> 1 - x^^^c) (nub cs)
     drop 1 . ogfCoeffs $ 1/f
@@ -263,6 +273,8 @@ transforms =
     , tRIGHT
     , tM2
     , tM2i
+    , tAERATE1
+    , tAERATE2
     , tBINOMIAL
     , tBINOMIALi
     , tBIN1
