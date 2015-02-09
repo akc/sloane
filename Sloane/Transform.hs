@@ -32,6 +32,7 @@ module Sloane.Transform
     , tPSUM
     , tPSUMSIGN
     , tSTIRLING
+    , tSTIRLINGi
     , tTRISECT0
     , tTRISECT1
     , tTRISECT2
@@ -94,11 +95,17 @@ x = ogf [0::Integer, 1]
 -- mulEGF :: [Integer] -> Transform
 -- mulEGF seq0 = \cs -> egfCoeffs (egf seq0 * egf cs)
 
+-- The geometric series 1/(1-c)
 geoSeries :: Rational -> GF
-geoSeries c = ogf [ c^k | k<-[0::Int ..] ]
+geoSeries c = ogf [ c^k | k <- [0::Int ..] ]
 
+-- Maclaurin series of exp(c)
 expSeries :: Rational -> GF
-expSeries c = egf [ c^k | k<-[0::Int ..] ]
+expSeries c = egf [ c^k | k <- [0::Int ..] ]
+
+-- Maclaurin series of log(1+c)
+logSeries :: Rational -> GF
+logSeries c = ogf (0%1 : [ -(-c)^k / toRational k | k <- [1::Int ..] ])
 
 bisect0 :: [a] -> [a]
 bisect0 [] = []
@@ -239,6 +246,10 @@ tSTIRLING :: NamedTransform
 tSTIRLING = NT "STIRLING" id (\cs ->
     drop 1 . egfCoeffs $ egf (0:cs) `o` (expSeries (1%1) - 1))
 
+tSTIRLINGi :: NamedTransform
+tSTIRLINGi = NT "STIRLINGi" id (\cs ->
+    drop 1 . egfCoeffs $ egf (0:cs) `o` (logSeries (1%1)))
+
 tTRISECT0 :: NamedTransform
 tTRISECT0 = NT "TRISECT0" (\n -> (n+2) `div` 3) trisect0
 
@@ -295,6 +306,7 @@ transforms =
     , tPSUM
     , tPSUMSIGN
     , tSTIRLING
+    , tSTIRLINGi
     , tTRISECT0
     , tTRISECT1
     , tTRISECT2

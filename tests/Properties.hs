@@ -56,6 +56,12 @@ prop_EXP_LOG = forAll (resize 20 arbitrary) $ \cs ->
 prop_CONVi_CONV = forAll (resize 20 arbitrary) $ \cs ->
     not (null cs) && head cs > 0 ==> (tCONVi $$ tCONV $$ cs) == cs
 
+prop_STIRLING_STIRLINGi = forAll (resize 20 arbitrary) $ \cs ->
+    (tSTIRLING $$ tSTIRLINGi $$ cs) == cs
+
+prop_STIRLINGi_STIRLING = forAll (resize 20 arbitrary) $ \cs ->
+    (tSTIRLINGi $$ tSTIRLING $$ cs) == cs
+
 prop_NEGATE_involutive cs = (tNEGATE $$ tNEGATE $$ cs) == cs
 
 prop_BIN1_involutive cs = (tBIN1 $$ tBIN1 $$ cs) == cs
@@ -91,6 +97,7 @@ tests =
     , checkUnit tPSUM [1,2,3,4,5] [1,3,6,10,15]
     , checkUnit tPSUMSIGN [1,2,3,4,5] [1,1,2,2,3]
     , checkUnit tSTIRLING [1,2,3,4,5] [1,3,10,37,151]
+    , checkUnit tSTIRLINGi [1,3,10,37,151] [1,2,3,4,5]
     , checkUnit tTRISECT0 [0,1,2,3,4,5,6] [0,3,6]
     , checkUnit tTRISECT1 [0,1,2,3,4,5,6] [1,4]
     , checkUnit tTRISECT2 [0,1,2,3,4,5,6] [2,5]
@@ -110,6 +117,8 @@ tests =
     , ("EXP.LOG = id",            check 100 prop_EXP_LOG)
     , ("LOG.EXP = id",            check 100 prop_LOG_EXP)
     , ("CONVi.CONV = id",         check 100 prop_CONVi_CONV)
+    , ("STIRLING.STIRLINGi = id", check 100 prop_STIRLING_STIRLINGi)
+    , ("STIRLINGi.STIRLING = id", check 100 prop_STIRLINGi_STIRLING)
     , ("NEGATE/involutive",       check 100 prop_NEGATE_involutive)
     , ("BIN1/involutive",         check 100 prop_BIN1_involutive)
     , ("BISECT0.AERATE1 = id",    check 100 prop_BISECT0_AERATE1)
