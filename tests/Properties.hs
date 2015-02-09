@@ -60,9 +60,9 @@ prop_NEGATE_involutive cs = (tNEGATE $$ tNEGATE $$ cs) == cs
 
 prop_BIN1_involutive cs = (tBIN1 $$ tBIN1 $$ cs) == cs
 
-prop_BISECT_AERATE cs = (tBISECT0 $$ tAERATE1 $$ cs) == cs
+prop_BISECT0_AERATE1 cs = (tBISECT0 $$ tAERATE1 $$ cs) == cs
 
-prop_TRISECT_AERATE cs = (tTRISECT0 $$ tAERATE2 $$ cs) == cs
+prop_TRISECT0_AERATE2 cs = (tTRISECT0 $$ tAERATE2 $$ cs) == cs
 
 tests =
     [ checkUnit tLEFT [4,3,2,1] [3,2,1]
@@ -112,8 +112,8 @@ tests =
     , ("CONVi.CONV = id",         check 100 prop_CONVi_CONV)
     , ("NEGATE/involutive",       check 100 prop_NEGATE_involutive)
     , ("BIN1/involutive",         check 100 prop_BIN1_involutive)
-    , ("BISECT.AERATE = id",      check 100 prop_BISECT_AERATE)
-    , ("TRISECT.AERATE = id",     check 100 prop_TRISECT_AERATE)
+    , ("BISECT0.AERATE1 = id",    check 100 prop_BISECT0_AERATE1)
+    , ("TRISECT0.AERATE2 = id",   check 100 prop_TRISECT0_AERATE2)
     ]
 
 main = runTests tests

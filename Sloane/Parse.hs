@@ -106,13 +106,13 @@ parseRecord = parse_ record
 parseRecords :: ByteString -> Map ANum ByteString
 parseRecords = M.fromList . map parseRecord . dropHeader . B.lines
 
-parseNamesMap :: ByteString -> NamesMap
-parseNamesMap = parseRecords
+parseNamesMap :: DB Names -> NamesMap
+parseNamesMap (DB bs) = parseRecords bs
 
 -- XXX: The triming here makes a noticeable slowdown. This should be
 -- fixable with laziness.
-parseSeqMap :: ByteString -> SeqMap
-parseSeqMap = M.map (B.init . B.tail) . parseRecords
+parseSeqMap :: DB Seq -> SeqMap
+parseSeqMap (DB bs) = M.map (B.init . B.tail) (parseRecords bs)
 
 -- Parsing a reply from oeis.org/search?fmt=text&n=?&q=?
 

@@ -1,3 +1,5 @@
+{-# LANGUAGE EmptyDataDecls #-}
+
 -- |
 -- Copyright   : Anders Claesson 2015
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
@@ -21,7 +23,11 @@ type PackedSeq  = ByteString
 
 type Reply = Map ANum (Map Char [ByteString])
 
-type SeqDB    = ByteString
-type NamesDB  = ByteString
+data Seq
+data Names
+
+newtype DB a = DB ByteString
+
+-- Change to ANumMap a = Map ANum a? Or simply remove?
 type SeqMap   = Map ANum PackedSeq
 type NamesMap = Map ANum Name

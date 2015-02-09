@@ -30,29 +30,29 @@ import Sloane.ParseOptions
 import Sloane.Config
 import Sloane.Transform
 
-grep :: PackedSeq -> SeqDB -> [PackedANum]
-grep q db = mapMaybe locateANum (S.indices q db)
+grep :: PackedSeq -> DB Seq -> [PackedANum]
+grep q (DB bs) = mapMaybe locateANum (S.indices q bs)
   where
     locateANum i = listToMaybe
         [ B.take 7 v
         | j <- [i,i-1..0]
-        , B.index db j == 'A'
-        , let (_,v) = B.splitAt j db
+        , B.index bs j == 'A'
+        , let (_,v) = B.splitAt j bs
         ]
 
-filterSeqsIO :: Options -> SeqDB -> IO [PackedSeq]
+filterSeqsIO :: Options -> DB Seq -> IO [PackedSeq]
 filterSeqsIO opts db =
     filter memberNotMember . map (parseSeq . dropComment) <$> getNonEmptyLines
   where
     dropComment = B.takeWhile (/='#')
     getNonEmptyLines = filter (not . B.null) . B.lines <$> B.getContents
-    memberNotMember q = (if invert opts then id else not ) . null $ grep q db
+    memberNotMember q = (if invert opts then id else not) . null $ grep q db
 
-readSeqDB :: Config -> IO SeqDB
-readSeqDB cfg = B.readFile (seqDBPath cfg)
+readSeqDB :: Config -> IO (DB Seq)
+readSeqDB cfg = DB <$> B.readFile (seqDBPath cfg)
 
-readNamesDB :: Config -> IO NamesDB
-readNamesDB cfg = B.readFile (namesDBPath cfg)
+readNamesDB :: Config -> IO (DB Names)
+readNamesDB cfg = DB <$> B.readFile (namesDBPath cfg)
 
 putReply :: Config -> Bool -> [Key] -> Reply -> IO ()
 putReply cfg noColor ks reply = do
