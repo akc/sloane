@@ -6,7 +6,7 @@
 
 import Data.List
 import Data.Maybe
-import Data.Map ((!))
+import Data.Map (Map, (!))
 import qualified Data.Map as M
 import Data.Conduit hiding (($$))
 import Data.Conduit.Zlib (ungzip)
@@ -31,8 +31,9 @@ import Sloane.Config
 import Sloane.Transform
 
 grep :: PackedSeq -> DB Seq -> [PackedANum]
-grep q (DB bs) = mapMaybe locateANum (S.indices q bs)
+grep p (DB bs) = mapMaybe locateANum (S.indices q bs)
   where
+    q = B.snoc (B.cons ',' p) ','
     locateANum i = listToMaybe
         [ B.take 7 v
         | j <- [i,i-1..0]
@@ -42,11 +43,11 @@ grep q (DB bs) = mapMaybe locateANum (S.indices q bs)
 
 filterSeqsIO :: Options -> DB Seq -> IO [PackedSeq]
 filterSeqsIO opts db =
-    filter memberNotMember . map (parseSeq . dropComment) <$> getNonEmptyLines
+    filter test . map (parseSeq . dropComment) <$> getNonEmptyLines
   where
     dropComment = B.takeWhile (/='#')
     getNonEmptyLines = filter (not . B.null) . B.lines <$> B.getContents
-    memberNotMember q = (if invert opts then id else not) . null $ grep q db
+    test q = (if invert opts then id else not) . null $ grep q db
 
 readSeqDB :: Config -> IO (DB Seq)
 readSeqDB cfg = DB <$> B.readFile (seqDBPath cfg)
@@ -120,7 +121,7 @@ updateDBs cfg = do
         yield bs
         progress (cnt + 1 :: Integer))
 
-mkReply :: SeqMap -> NamesMap -> [ANum] -> Reply
+mkReply :: Map ANum PackedSeq -> Map ANum Name -> [ANum] -> Reply
 mkReply s n = M.fromList . map (\k -> (k, M.fromList [('S', [s!k]), ('N', [n!k])]))
 
 sloane :: Options -> Config -> IO ()
@@ -136,9 +137,8 @@ sloane opts c
         nm <- parseNamesMap <$> readNamesDB c
         let nts = length ts
         forM_ ts $ \term -> do
-             let q  = parseSeq (B.pack term)
-             let q' = anchorSeq q
-             let f  = mkReply sm nm . map parseANum . takeUniq . grep q'
+             let q = parseSeq (B.pack term)
+             let f = mkReply sm nm . map parseANum . takeUniq . grep q
              when (nts > 1) $ putStr "seq: " >> B.putStrLn q
              readSeqDB c >>= putReplyOrUrls opts c . f
     | otherwise = oeisLookup n (unwords ts) c >>= putReplyOrUrls opts c

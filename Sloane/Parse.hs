@@ -13,7 +13,6 @@ module Sloane.Parse
     , parseReply
     , packANum
     , packIntSeq
-    , anchorSeq
     ) where
 
 import Prelude hiding (takeWhile)
@@ -80,9 +79,6 @@ intSeq0 = do
 intSeq :: Parser IntSeq
 intSeq = many spc *> (bracketed intSeq0 <|> intSeq0) <* many spc
 
-anchorSeq :: PackedSeq -> PackedSeq
-anchorSeq s = B.snoc (B.cons ',' s) ','
-
 packIntSeq :: IntSeq -> PackedSeq
 packIntSeq = B.intercalate (B.pack ",") . map (B.pack . show)
 
@@ -106,12 +102,12 @@ parseRecord = parse_ record
 parseRecords :: ByteString -> Map ANum ByteString
 parseRecords = M.fromList . map parseRecord . dropHeader . B.lines
 
-parseNamesMap :: DB Names -> NamesMap
+parseNamesMap :: DB Names -> Map ANum Name
 parseNamesMap (DB bs) = parseRecords bs
 
 -- XXX: The triming here makes a noticeable slowdown. This should be
 -- fixable with laziness.
-parseSeqMap :: DB Seq -> SeqMap
+parseSeqMap :: DB Seq -> Map ANum PackedSeq
 parseSeqMap (DB bs) = M.map (B.init . B.tail) (parseRecords bs)
 
 -- Parsing a reply from oeis.org/search?fmt=text&n=?&q=?

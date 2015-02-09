@@ -27,7 +27,3 @@ data Seq
 data Names
 
 newtype DB a = DB ByteString
-
--- Change to ANumMap a = Map ANum a? Or simply remove?
-type SeqMap   = Map ANum PackedSeq
-type NamesMap = Map ANum Name
