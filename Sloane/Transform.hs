@@ -105,7 +105,7 @@ expSeries c = egf [ c^k | k <- [0::Int ..] ]
 
 -- Maclaurin series of log(1+c)
 logSeries :: Rational -> GF
-logSeries c = ogf (0%1 : [ -(-c)^k / toRational k | k <- [1::Int ..] ])
+logSeries c = ogf (0 : [ -(-c)^k / toRational k | k <- [1::Int ..] ])
 
 bisect0 :: [a] -> [a]
 bisect0 [] = []
@@ -128,7 +128,7 @@ trisect2 [] = []
 trisect2 (_:cs) = trisect1 cs
 
 signed :: GF -> GF
-signed = imap $ \i c -> (-1%1)^i * c
+signed = imap $ \i c -> (-1)^i * c
 
 tLEFT :: NamedTransform
 tLEFT = NT "LEFT" (drop 1)
@@ -137,13 +137,13 @@ tRIGHT :: NamedTransform
 tRIGHT = NT "RIGHT" (1:)
 
 tM2 :: NamedTransform
-tM2 = NT "M2" f where f [] = []; f (c:cs) = c : map ((2%1)*) cs
+tM2 = NT "M2" f where f [] = []; f (c:cs) = c : map (2*) cs
 
 tM2i :: NamedTransform
 tM2i = NT "M2i" (ogfCoeffs . Series . f)
   where
     f [] = []
-    f cs = let (d:ds) = map toRational cs in d : map (/(2%1)) ds
+    f cs = let (d:ds) = map toRational cs in d : map (/2) ds
 
 tAERATE1 :: NamedTransform
 tAERATE1 = NT "AERATE1" $ \cs -> ogfCoeffs $ ogf cs `o` x^(2::Int)
@@ -153,15 +153,15 @@ tAERATE2 = NT "AERATE2" $ \cs -> ogfCoeffs $ ogf cs `o` x^(3::Int)
 
 tBINOMIAL :: NamedTransform
 tBINOMIAL = NT "BINOMIAL" $ \cs ->
-    egfCoeffsN (length cs) (expSeries (1%1) * egf cs)
+    egfCoeffsN (length cs) (expSeries 1 * egf cs)
 
 tBINOMIALi :: NamedTransform
 tBINOMIALi = NT "BINOMIALi" $ \cs ->
-    egfCoeffsN (length cs) (expSeries ((-1)%1) * egf cs)
+    egfCoeffsN (length cs) (expSeries (-1) * egf cs)
 
 tBIN1 :: NamedTransform
 tBIN1 = NT "BIN1" $ \cs ->
-    drop 1 $ egfCoeffsN (1+length cs) (-expSeries (-1%1) * signed (egf (0:cs)))
+    drop 1 $ egfCoeffsN (1+length cs) (-expSeries (-1) * signed (egf (0:cs)))
 
 tBISECT0 :: NamedTransform
 tBISECT0 = NT "BISECT0" bisect0
@@ -242,22 +242,22 @@ tNEGATE :: NamedTransform
 tNEGATE = NT "NEGATE" f where f [] = []; f (c:cs) = c : map negate cs
 
 tPRODS :: NamedTransform
-tPRODS = NT "PRODS" (drop 1 . scanl (*) (1%1))
+tPRODS = NT "PRODS" (drop 1 . scanl (*) 1)
 
 tPSUM :: NamedTransform
-tPSUM = NT "PSUM" (drop 1 . scanl (+) (0%1))
+tPSUM = NT "PSUM" (drop 1 . scanl (+) 0)
 
 tPSUMSIGN :: NamedTransform
 tPSUMSIGN = NT "PSUMSIGN" $ \cs ->
-    ogfCoeffsN (length cs) . (geoSeries (-1%1) *) $ ogf cs
+    ogfCoeffsN (length cs) . (geoSeries (-1) *) $ ogf cs
 
 tSTIRLING :: NamedTransform
 tSTIRLING = NT "STIRLING" $ \cs ->
-    drop 1 . egfCoeffsN (1+length cs) $ egf (0:cs) `o` (expSeries (1%1) - 1)
+    drop 1 . egfCoeffsN (1+length cs) $ egf (0:cs) `o` (expSeries 1 - 1)
 
 tSTIRLINGi :: NamedTransform
 tSTIRLINGi = NT "STIRLINGi" $ \cs ->
-    drop 1 . egfCoeffsN (1+length cs) $ egf (0:cs) `o` (logSeries (1%1))
+    drop 1 . egfCoeffsN (1+length cs) $ egf (0:cs) `o` (logSeries 1)
 
 tTRISECT0 :: NamedTransform
 tTRISECT0 = NT "TRISECT0" trisect0
