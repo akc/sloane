@@ -236,9 +236,7 @@ tEXP = NT "EXP" $ \cs ->
 -- 1 + EGF_A (x) = exp EGF_B (x) i.e. EGF_B (x) = log(1 + EGF_A (x)).
 tLOG :: NamedTransform
 tLOG = NT "LOG" $ \cs ->
-    drop 1 $ egfCoeffsN (1+length cs) (log1 `o` (-1 * egf (0:cs)))
-  where
-    log1 = Series (0 : [-1 % n | n <- [1..]])
+    drop 1 $ egfCoeffsN (1+length cs) (logSeries 1 `o` egf (0:cs))
 
 tNEGATE :: NamedTransform
 tNEGATE = NT "NEGATE" f where f [] = []; f (c:cs) = c : map negate cs
