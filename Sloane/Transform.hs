@@ -311,6 +311,8 @@ transforms =
     , tMOBIUSi
     , tEULER
     , tEULERi
+    , tLAH
+    , tLAHi
     , tEXP
     , tLOG
     , tNEGATE
