@@ -36,6 +36,9 @@ prop_BINOMIALi_BINOMIAL =
 prop_BINOMIAL_BINOMIALi =
     forSized 20 $ \cs -> (tBINOMIAL $$ tBINOMIALi $$ cs) == cs
 
+prop_LAH_LAHi = forSized 10 $ \cs -> (tLAH $$ tLAHi $$ cs) == cs
+prop_LAHi_LAH = forSized 15 $ \cs -> (tLAHi $$ tLAH $$ cs) == cs
+
 prop_EULER_EULERi = forSized 10 $ \cs -> (tEULER $$ tEULERi $$ cs) == cs
 prop_EULERi_EULER = forSized 15 $ \cs -> (tEULERi $$ tEULER $$ cs) == cs
 
@@ -79,6 +82,8 @@ tests =
     , checkUnit tMOBIUSi   [1,2,3,4,5,6]     [1,3,4,7,6,12]
     , checkUnit tEULER     [1,1,0,0,0,0,0]   [1,2,2,3,3,4,4]
     , checkUnit tEULERi    [1,2,2,3,3,4,4]   [1,1,0,0,0,0,0]
+    , checkUnit tLAH       [5,4,3,2,1]       [5,4,11,44,229]
+    , checkUnit tLAHi      [5,4,3,2,1]       [5,4,-5,8,-11]
     , checkUnit tEXP       [1,2,3,4]         [1,3,10,41]
     , checkUnit tLOG       [1,3,10,41]       [1,2,3,4]
     , checkUnit tCONV      [1,2,3,4,5]       [1,4,10,20,35]
@@ -101,6 +106,8 @@ tests =
     , ("M2i.M2 = id",             check 100 prop_M2i_M2)
     , ("BINOMIAL.BINOMIALi = id", check 100 prop_BINOMIAL_BINOMIALi)
     , ("BINOMIALi.BINOMIAL = id", check 100 prop_BINOMIALi_BINOMIAL)
+    , ("LAH.LAHi = id",           check 100 prop_LAH_LAHi)
+    , ("LAHi.LAH = id",           check 100 prop_LAHi_LAH)
     , ("EULER.EULERi = id",       check 100 prop_EULER_EULERi)
     , ("EULERi.EULER = id",       check 100 prop_EULERi_EULER)
     , ("MOBIUS.MOBIUSi = id",     check 100 prop_MOBIUS_MOBIUSi)

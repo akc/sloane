@@ -25,6 +25,8 @@ module Sloane.Transform
     , tMOBIUSi
     , tEULER
     , tEULERi
+    , tLAH
+    , tLAHi
     , tEXP
     , tLOG
     , tNEGATE
@@ -217,6 +219,12 @@ tEULERi = NT "EULERi" $ \bs ->
              ]
        | n <- [1..fromIntegral (length bs)]
        ]
+
+tLAH :: NamedTransform
+tLAH = NT "LAH" $ \cs -> egfCoeffsN (length cs) $ egf cs `o` (x/(1-x))
+
+tLAHi :: NamedTransform
+tLAHi = NT "LAHi" $ \cs -> egfCoeffsN (length cs) $ egf cs `o` (x/(1+x))
 
 -- EXP converts [a_1, a_2, ...] to [b_1, b_2,...] where
 -- 1 + EGF_B (x) = exp EGF_A (x)
