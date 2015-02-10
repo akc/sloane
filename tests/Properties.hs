@@ -24,9 +24,6 @@ runTests = mapM_ (\(name, t) -> putStr (name ++ ":\t") >> t)
 forSized :: (Arbitrary a, Testable prop, Show a) => Int -> (a -> prop) -> Property
 forSized n = forAll (resize n arbitrary)
 
-prop_Growth f = forSized 18 $ \cs ->
-    let n = length cs; as = f $$ cs in null as || length as == growth f n
-
 prop_NoRuntimeError f = forSized 18 $ \cs -> (f $$ cs) `seq` True
 
 prop_LEFT_RIGHT cs = (tLEFT $$ tRIGHT $$ cs) == cs
@@ -100,7 +97,6 @@ tests =
     , checkUnit tWEIGHT    [1,1,1,1,1,1,1,1] [1,1,2,2,3,4,5,6]
     , checkUnit tPARTITION [1,3,5,13]        [1,1,2,2]
     , ("eval/NoRuntimeError",     check 600 prop_NoRuntimeError)
-    , ("growth",                  check 200 prop_Growth)
     , ("LEFT.RIGHT = id",         check 100 prop_LEFT_RIGHT)
     , ("M2i.M2 = id",             check 100 prop_M2i_M2)
     , ("BINOMIAL.BINOMIALi = id", check 100 prop_BINOMIAL_BINOMIALi)

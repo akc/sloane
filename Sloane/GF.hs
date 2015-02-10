@@ -14,7 +14,9 @@ module Sloane.GF
     , ogf
     , egf
     , ogfCoeffs
+    , ogfCoeffsN
     , egfCoeffs
+    , egfCoeffsN
     )where
 
 import Data.List
@@ -154,8 +156,14 @@ ogf = Series . map toRational
 ogfCoeffs :: GF -> [Rational]
 ogfCoeffs = coeffs
 
+ogfCoeffsN :: Int -> GF -> [Rational]
+ogfCoeffsN n = take n . coeffs
+
 egf :: Real a => [a] -> GF
 egf = Series . zipWith (\n c -> toRational c * (1 % factorial n)) [0..]
 
 egfCoeffs :: GF -> [Rational]
 egfCoeffs = ogfCoeffs . imap (\i -> (* (factorial i % 1)))
+
+egfCoeffsN :: Int -> GF -> [Rational]
+egfCoeffsN n = take n . egfCoeffs
