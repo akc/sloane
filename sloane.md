@@ -9,8 +9,8 @@ sloane: A command line interface to Sloane's OEIS.
 
 # SYNOPSIS
 
-**sloane** [ options ] --oeis TERMS...  
-**sloane** [ options ] (-q|--query) A-NUMBER/SEQUENCE...  
+**sloane** [OPTION] --oeis TERMS...  
+**sloane** [OPTION] (-q|--query) A-NUMBER/SEQUENCE...  
 **sloane** [--invert] --filter  
 
 # DESCRIPTION
@@ -24,7 +24,7 @@ mode is the default.
 
 ## Synopsis
 
-sloane [--long] [-k KEYS] [-n N] [--all] [--monochrome] --oeis TERMS...
+sloane [--long] [-k KEYS] [-n N] [--all] [--monochrome] [--json] --oeis TERMS...
 
 ## Description
 
@@ -34,20 +34,23 @@ Sequences (OEIS).
 ## Options
 
 --long
-:   Long format; print all fields
+:   Long format; print all fields.
 
 -k *KEYS*
-:   Keys of fields to print (default: SN)
+:   Keys of fields to print (default: SN).
 
 -n *N*
-:   Fetch at most this many entries (default: 5)
+:   Fetch at most this many entries (default: 5).
 
 --all
-:   Fetch all matching entries (equivalent to -n 999999)
+:   Fetch all matching entries (equivalent to -n 999999).
 
 --monochrome
 :   Do not colorize the output. Useful when piping the output to another
     program.
+
+--json
+:   Output results is JSON format.
 
 ## Examples
 
@@ -80,7 +83,7 @@ this is unwanted, pipe the output through cat or less:
 
 ## Synopsis
 
-sloane [ options ] (-q|--query) A-NUMBER/SEQUENCE...
+sloane [OPTION] (-q|--query) A-NUMBER/SEQUENCE...
 
 ## Description
 
@@ -141,9 +144,6 @@ instance, run
 :   Return sequences *not* in the database.
 
 # ADDITIONAL OPERATIONS
-
---dump
-:   Output all the sequences of the local data base
 
 --update
 :   Update the local database.
