@@ -1,0 +1,1 @@
+hasktags --ignore-close-implementation --etags sloane.hs Sloane/

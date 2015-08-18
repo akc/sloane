@@ -1,10 +1,10 @@
 Name:                sloane
-Version:             3.0.0
-Synopsis:            A command line interface to Sloane's On-Line Encyclopedia
-                     of Integer Sequences
-Description:         A command line interface to Sloane's On-Line Encyclopedia
-                     of Integer Sequences. For usage see
-                     <http://github.com/akc/sloane>.
+Version:             4.0.0
+Synopsis:            A power series interpreter
+
+Description:         A power series interpreter and a command line interface to
+                     Sloane's On-Line Encyclopedia of Integer Sequences.
+
 Homepage:            http://github.com/akc/sloane
 License:             BSD3
 License-file:        LICENSE
@@ -22,25 +22,43 @@ source-repository head
 
 Executable sloane
   Main-is:             sloane.hs
-  Other-Modules:       Sloane.Types
-                       Sloane.Parse
-                       Sloane.ParseOptions
+
+  Other-Modules:       Sloane.Bloom
                        Sloane.Config
-                       Sloane.GF
-                       Sloane.Transform
-  ghc-options:         -Wall -fno-warn-unused-do-bind
-  Build-depends:       base >=3 && <5,
-                       containers >=0.5,
-                       transformers >=0.3,
+                       Sloane.DB
+                       Sloane.Download
+                       Sloane.Entry
+                       Sloane.OEIS
+                       Sloane.Options
+                       Sloane.Utils
+
+  ghc-options:         -Wall -fno-warn-unused-do-bind -fno-warn-missing-signatures
+                       -threaded -O2 -with-rtsopts=-N
+
+  Build-depends:       aeson >=0.8,
+                       ansi-terminal >=0.6,
                        attoparsec >=0.11,
-                       optparse-applicative >=0.10,
+                       base >=4 && <5,
+                       bloomfilter >=2.0,
+                       bytestring >=0.10,
                        conduit >=1,
                        conduit-extra >=1,
-                       http-conduit >=2,
-                       bytestring >=0.10,
-                       stringsearch >=0.3,
-                       text >=0.11,
-                       ansi-terminal >=0.6,
-                       terminal-size >=0.2,
+                       containers >=0.5,
+                       deepseq >=1.4,
+                       directory >=1.2,
                        filepath >=1.3,
-                       directory >=1.2
+                       http-conduit >=2,
+                       http-types >=0.8,
+                       optparse-applicative >=0.10,
+                       parallel >=3.2,
+                       stringsearch >=0.3,
+                       terminal-size >=0.2,
+                       text >=0.11,
+                       transformers >=0.3,
+                       vector >=0.10
+
+Test-Suite Properties
+  type:                exitcode-stdio-1.0
+  Main-is:             tests/Properties.hs
+  Build-depends:       base >=4 && <5,
+                       QuickCheck >=2.7

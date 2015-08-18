@@ -1,154 +1,196 @@
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE PolyKinds #-}
+
 -- |
 -- Copyright   : Anders Claesson 2012-2015
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 -- License     : BSD-3
 --
 
+module Main (main) where
+
 import Data.List
+import Data.Bits (xor)
 import Data.Maybe
+import Data.Monoid
 import Data.Map (Map, (!))
 import qualified Data.Map as M
-import Data.Conduit hiding (($$))
-import Data.Conduit.Zlib (ungzip)
-import qualified Data.Conduit.Binary as CB
 import qualified Data.ByteString.Char8 as B
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString.Search as S
+import qualified Data.ByteString.Lazy.Char8 as BL
 import Data.Text.Encoding (decodeUtf8)
 import qualified Data.Text as T
 import qualified Data.Text.IO as IO
-import Network.HTTP.Conduit
-import Options.Applicative
-import Control.Monad.IO.Class (liftIO)
+import Control.Applicative
 import Control.Monad
 import System.Directory
-import System.IO
 import System.Console.ANSI
-import Sloane.Types
-import Sloane.Parse
-import Sloane.ParseOptions
+import System.IO
+import Sloane.OEIS
+import Sloane.Entry
+import Sloane.Options
 import Sloane.Config
-import Sloane.Transform
+import Sloane.Download
+import Sloane.Bloom
+import Sloane.DB
 
-grep :: PackedSeq -> DB Seq -> [PackedANum]
-grep p (DB bs) = mapMaybe locateANum (S.indices q bs)
+nameVer  = "sloane 4.0.0"                 :: String
+oeisURL  = "https://oeis.org/search"      :: URL
+strpdURL = "https://oeis.org/stripped.gz" :: URL
+namesURL = "https://oeis.org/names.gz"    :: URL
+
+type Query  = B.ByteString
+type Width  = Int
+type Limit  = Int
+type View   = (Width, Palette, [Key])
+
+data Input
+    = SearchLocalDB (DB Sequences) (DB Names) Limit View [Either ANum PackedSeq]
+    | SearchOEIS Limit View String
+    | FilterSeqs (DB Sequences) Bool [PackedEntry]
+    | UpdateDBs FilePath FilePath FilePath
+    | Empty
+
+data Output
+    = OEISReplies View [(Query, [Reply])]
+    | Entries [PackedEntry]
+    | NOP
+
+nonEmptyLines :: BL.ByteString -> [B.ByteString]
+nonEmptyLines = map BL.toStrict . filter (not . BL.null) . BL.lines
+
+readStdin :: IO [B.ByteString]
+readStdin = nonEmptyLines <$> BL.getContents
+
+readInput :: Options -> Config -> IO Input
+readInput opts cfg
+    | version opts = return Empty
+
+    | update opts =
+        return $ UpdateDBs (sloaneDir cfg) (seqDBPath cfg) (namesDBPath cfg)
+
+    | filtr opts = do
+        db <- readSeqDB cfg
+        FilterSeqs db (invert opts) . map parsePackedEntryErr <$> readStdin
+
+    | oeis opts = return $ SearchOEIS (limit opts) view (unwords (terms opts))
+
+    | query opts = do
+        sdb <- readSeqDB cfg
+        ndb <- readNamesDB cfg
+        let parseInp t = fromMaybe (error "cannot parse input")
+                       $  (Right . getPackedSeq <$> parsePackedEntry t)
+                      <|> (Left <$> parseANum t)
+                      <|> (Right . packSeq . map fromIntegral <$> parseIntegerSeq t)
+        SearchLocalDB sdb ndb (limit opts) view . map parseInp
+            <$> case map B.pack (terms opts) of
+                  [] -> readStdin
+                  ts -> return ts
+    | otherwise = readInput (opts {query = True}) cfg
   where
-    q = B.snoc (B.cons ',' p) ','
-    locateANum i = listToMaybe
-        [ B.take 7 v
-        | j <- [i,i-1..0]
-        , B.index bs j == 'A'
-        , let (_,v) = B.splitAt j bs
-        ]
+    view = (termWidth cfg, palette opts, keys opts)
 
-filterSeqsIO :: Options -> DB Seq -> IO [PackedSeq]
-filterSeqsIO opts db =
-    filter test . map (parseSeq . dropComment) <$> getNonEmptyLines
+few :: [a] -> Bool
+few (_:_:_) = False
+few _       = True
+
+allANum :: [(Query, a)] -> Bool
+allANum= all (\(q, _) -> B.head q == 'A')
+
+printReply :: View -> Reply -> IO ()
+printReply (width, pal, ks) (Reply (ANum anum) (Table table)) =
+    forM_ (ks `intersect` M.keys table) $ \key -> do
+        let entry = table ! key
+        let crop' = crop key (width - 10)
+        let mono  = monochrome pal
+        forM_ entry $ \line -> do
+            unless mono $ setSGR [ SetColor Foreground Dull Green ]
+            putStr [key]
+            unless mono $ setSGR [ SetColor Foreground Dull Yellow ]
+            B.putStr $ indent anum
+            unless mono $ setSGR []
+            IO.putStrLn $ indent (crop' (decodeUtf8 line))
   where
-    dropComment = B.takeWhile (/='#')
-    getNonEmptyLines = filter (not . B.null) . B.lines <$> B.getContents
-    test q = (if invert opts then id else not) . null $ grep q db
-
-readSeqDB :: Config -> IO (DB Seq)
-readSeqDB cfg = DB <$> B.readFile (seqDBPath cfg)
-
-readNamesDB :: Config -> IO (DB Names)
-readNamesDB cfg = DB <$> B.readFile (namesDBPath cfg)
-
-putReply :: Config -> Bool -> [Key] -> Reply -> IO ()
-putReply cfg noColor ks reply = do
-    unless (M.null reply) $ putStrLn ""
-    forM_ (M.toList reply) $ \(anum, fields) -> do
-        forM_ (ks `intersect` M.keys fields) $ \key -> do
-            let entry = fields ! key
-            forM_ entry $ \line -> do
-                let line' = decodeUtf8 line
-                unless noColor $ setSGR [ SetColor Foreground Dull Green ]
-                putStr [key]
-                unless noColor $ setSGR [ SetColor Foreground Dull Yellow ]
-                putStr " " >> B.putStr (packANum anum)
-                unless noColor $ setSGR []
-                putStr " " >> IO.putStrLn (crop key (termWidth cfg - 10) line')
-        putStrLn ""
-  where
+    indent s = " " <> s
+    dropLastField = T.reverse . T.dropWhile (/= ',') . T.reverse
     cropText f cap s = if cap < T.length s then f cap s else s
-    crop key =
-      if key `elem` ['S'..'X']
-        then cropText $ \cap -> T.reverse . T.dropWhile (/= ',') . T.reverse . T.take cap
-        else cropText $ \cap s -> T.take (cap-2) s `T.append` T.pack ".."
+    crop key = cropText $ \cap s ->
+        if key `elem` ['S'..'X']
+            then dropLastField (T.take cap s)
+            else T.take (cap-2) s <> ".."
 
-putReplyOrUrls :: Options -> Config -> Reply -> IO ()
-putReplyOrUrls opts cfg
-    | url opts  = putStr . unlines . oeisUrls
-    | otherwise = putReply cfg (nocolor opts) (keys opts)
-  where
-    oeisUrls = map ((oeisHost cfg ++) . B.unpack . packANum) . M.keys
+printOutput :: Output -> IO ()
+printOutput NOP = return ()
+printOutput (Entries es) =
+    forM_ es $ \(PackedEntry (PPrg p) (PSeq s)) ->
+        B.putStrLn $ p <> " => {" <> s <> "}"
 
-setQueryStr :: [(String, String)] -> Request -> Request
-setQueryStr kvs = setQueryString [(B.pack k, Just (B.pack v)) | (k,v) <- kvs]
+printOutput (OEISReplies view rss) = do
+    let hideQuery = few rss || allANum rss
+    let noReplies = null $ concat $ snd (unzip rss)
+    forM_ (zip [1::Int ..] rss) $ \(i,(q,replies)) -> do
+        unless hideQuery $ do
+            when (i > 1) $ putStrLn ""
+            B.putStrLn ("query: " <> q)
+        forM_ replies $ \r -> do
+            putStrLn ""
+            printReply view r
+    unless noReplies $ putStrLn ""
 
-oeisLookup :: Int -> String -> Config -> IO Reply
-oeisLookup cap term cfg = do
-    let kvs = [("n", show cap), ("q", term), ("fmt","text")]
-    req <- setQueryStr kvs <$> parseUrl (oeisURL cfg)
-    res <- withManager $ httpLbs req
-    return $ parseReply $ BL.toStrict $ responseBody res
+-- Construct a list of replies associated with a list of A-numbers.
+mkReplies :: Map ANum PackedSeq -> Map ANum Name -> [ANum] -> [Reply]
+mkReplies s n anums =
+    [ Reply k (Table $ M.fromList [('S', [unPSeq (s!k)]), ('N', [n!k])])
+    | k <- anums
+    , M.member k s && M.member k n
+    ]
 
-applyTransform :: Options -> String -> IO ()
-applyTransform opts tname =
-    case lookupTranform tname of
-      Nothing -> error "No transform with that name"
-      Just f  -> forM_ (terms opts) $ \input ->
-                     case f $$ parseIntSeq (B.pack input) of
-                       [] -> return ()
-                       cs -> B.putStrLn (packIntSeq cs)
+sloane :: Input -> IO Output
+sloane inp =
+    case inp of
 
-updateDBs :: Config -> IO ()
-updateDBs cfg = do
-    createDirectoryIfMissing False (sloaneDir cfg)
-    putStr $ "Downloading " ++ strippedURL cfg
-    putStr " " >> download (strippedURL cfg) (seqDBPath cfg)
-    putStr $ "\nDownloading " ++ namesURL cfg
-    putStr " " >> download (namesURL cfg) (namesDBPath cfg)
-    putStrLn "\nDone."
-  where
-    download uri fpath = withManager $ \manager -> do
-        req <- parseUrl uri
-        res <- http req manager
-        responseBody res $$+- progress 0 =$ ungzip =$ CB.sinkFile fpath
-    progress cnt = await >>= maybe (return ()) (\bs -> do
-        when (cnt `mod` 25 == 0) $ liftIO (putStr "." >> hFlush stdout)
-        yield bs
-        progress (cnt + 1 :: Integer))
+      SearchLocalDB sdb ndb maxReplies view ts -> do
+          let sm = M.fromList $ parseStripped (unDB sdb)
+          let nm = M.fromList $ parseNames (unDB ndb)
+          return $ OEISReplies view
+              [ (q, mkReplies sm nm ks)
+              | (q, ks) <-
+                  [ case t of
+                      Right s@(PSeq r) -> (r, grepN maxReplies s sdb)
+                      Left (ANum anum) -> (anum, [ANum anum])
+                  | t <- ts
+                  ]
+              ]
 
-mkReply :: Map ANum PackedSeq -> Map ANum Name -> [ANum] -> Reply
-mkReply s n = M.fromList . map (\k -> (k, M.fromList [('S', [s!k]), ('N', [n!k])]))
+      SearchOEIS lim view q -> do
+          let kvs = [("n", B.pack (show lim)), ("q", B.pack q), ("fmt", "text")]
+          replies <- requestPage oeisURL kvs
+          return $ OEISReplies view [(B.pack q, parseReplies replies)]
 
-sloane :: Options -> Config -> IO ()
-sloane opts c
-    | version opts = putStrLn (nameVer c)
-    | update opts = updateDBs c
-    | listTransforms opts = mapM_ (putStrLn . name) transforms
-    | anum > 0 = lookupSeq . parseSeqMap <$> readSeqDB c >>= mapM_ B.putStrLn
-    | filtr opts = readSeqDB c >>= filterSeqsIO opts >>= mapM_ B.putStrLn
-    | not (null tname) = applyTransform opts tname
-    | local opts = do
-        sm <- parseSeqMap <$> readSeqDB c
-        nm <- parseNamesMap <$> readNamesDB c
-        let nts = length ts
-        forM_ ts $ \term -> do
-             let q = parseSeq (B.pack term)
-             let f = mkReply sm nm . map parseANum . takeUniq . grep q
-             when (nts > 1) $ putStr "seq: " >> B.putStrLn q
-             readSeqDB c >>= putReplyOrUrls opts c . f
-    | otherwise = oeisLookup n (unwords ts) c >>= putReplyOrUrls opts c
-  where
-    n = if limitless opts then 999999 else limit opts
-    ts = terms opts
-    anum = anumber opts
-    tname = transform opts
-    takeUniq = take n . map head . group
-    lookupSeq = maybeToList . M.lookup anum
+      FilterSeqs db invFlag es -> do
+          let bloom = mkBloomFilter db
+          return $ Entries
+              [ e | e@(PackedEntry _ s) <- es
+              , not (B.null (unPSeq s))
+              , invFlag `xor` (s `isFactorOf` bloom && not (null (grep s db)))
+              ]
 
+      UpdateDBs sloanedir sdbPath ndbPath -> do
+          createDirectoryIfMissing False sloanedir
+          let msg1 = "Downloading " ++ strpdURL ++ ": "
+          let msg2 = "Downloading " ++ namesURL ++ ": "
+          putStr msg1 >> hFlush stdout
+          download (length msg1) strpdURL sdbPath >> putStrLn ""
+          putStr msg2 >> hFlush stdout
+          download (length msg2) namesURL ndbPath >> putStrLn ""
+          return NOP
+
+      Empty -> putStrLn nameVer >> return NOP
+
+-- | Main function and entry point for sloane.
 main :: IO ()
-main = getOptions >>= \opts -> defaultConfig >>= sloane opts
+main = do
+    c <- getConfig
+    t <- getOptions
+    readInput t c >>= sloane >>= printOutput

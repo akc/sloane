@@ -1,6 +1,6 @@
 old="$1"
 new="$2"
 
-sed -i'' s/$old/$new/ README.md
+sed -i'' s/$old/$new/ sloane.md
+sed -i'' s/$old/$new/ sloane.hs
 sed -i'' s/$old/$new/ sloane.cabal
-sed -i'' s/$old/$new/ Sloane/Config.hs

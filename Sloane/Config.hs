@@ -3,39 +3,41 @@
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 -- License     : BSD-3
 --
-module Sloane.Config (Config (..), defaultConfig) where
+-- Constants determined at runtime such as the home directory.
+
+module Sloane.Config
+    ( Config (..)
+    , getConfig
+    ) where
 
 import System.Console.Terminal.Size (width, size)
 import System.FilePath ((</>))
 import System.Directory
-import Sloane.Types
 
+-- | A data type holding "constants" determined at runtime.
 data Config = Config
-    { nameVer     :: String
-    , home        :: FilePath
+    {
+    -- | The home directory
+      home        :: FilePath
+    -- | Path to the '.sloane' directory.
     , sloaneDir   :: FilePath
+    -- | Path to 'stripped' file.
     , seqDBPath   :: FilePath
+    -- | Path to 'names' file.
     , namesDBPath :: FilePath
-    , oeisHost    :: URL
-    , oeisURL     :: URL
-    , strippedURL :: URL
-    , namesURL    :: URL
+    -- | The width of the terminal.
     , termWidth   :: Int
     }
 
-defaultConfig :: IO Config
-defaultConfig = do
+-- | Get configuration.
+getConfig :: IO Config
+getConfig = do
     w <- maybe maxBound width `fmap` size
     h <- getHomeDirectory
-    let c = Config { nameVer     = "sloane 3.0.0"
-                   , home        = h
+    let c = Config { home        = h
                    , sloaneDir   = h </> ".sloane"
                    , seqDBPath   = sloaneDir c </> "stripped"
                    , namesDBPath = sloaneDir c </> "names"
-                   , oeisHost    = "https://oeis.org/"
-                   , oeisURL     = oeisHost c ++ "search"
-                   , strippedURL = oeisHost c ++ "stripped.gz"
-                   , namesURL    = oeisHost c ++ "names.gz"
                    , termWidth   = w
                    }
     return c
