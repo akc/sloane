@@ -1,5 +1,7 @@
+sudo: false
 language: haskell
 
-before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -y pandoc
+addons:
+  apt:
+    packages:
+    - pandoc
