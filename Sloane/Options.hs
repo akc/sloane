@@ -41,6 +41,8 @@ data Options = Options
     -- | Should we colorize the output?
     , palette        :: Palette
     -- | Filter out sequences in local DB.
+    , tojson         :: Bool
+    -- | Return sequences NOT in DB
     , filtr          :: Bool
     -- | Return sequences NOT in DB
     , invert         :: Bool
@@ -82,6 +84,9 @@ optionsParser =
     <*> (toEnum . fromEnum <$> switch
         ( long "monochrome"
        <> help "Do not colorize the output" ) )
+    <*> switch
+        ( long "json"
+       <> help ("Return results is JSON format") )
     <*> switch
         ( long "filter"
        <> help ("Read sequences from stdin and return"

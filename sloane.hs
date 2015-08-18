@@ -12,6 +12,7 @@
 module Main (main) where
 
 import Data.List
+import Data.Aeson
 import Data.Bits (xor)
 import Data.Maybe
 import Data.Monoid
@@ -45,15 +46,24 @@ type Width  = Int
 type Limit  = Int
 type View   = (Width, Palette, [Key])
 
+data QA = QA Query [Reply]
+
+instance ToJSON QA where
+    toJSON (QA q rs) =
+        object [ "query" .= String (decodeUtf8 q)
+               , "reply" .= toJSON rs
+               ]
+
 data Input
-    = SearchLocalDB (DB Sequences) (DB Names) Limit View [Either ANum PackedSeq]
-    | SearchOEIS Limit View String
+    = SearchLocalDB (DB Sequences) (DB Names) Bool Limit View [Either ANum PackedSeq]
+    | SearchOEIS Bool Limit View String
     | FilterSeqs (DB Sequences) Bool [PackedEntry]
     | UpdateDBs FilePath FilePath FilePath
     | Empty
 
 data Output
-    = OEISReplies View [(Query, [Reply])]
+    = OEISReplies View [QA]
+    | OEISRepliesJSON [QA]
     | Entries [PackedEntry]
     | NOP
 
@@ -74,7 +84,8 @@ readInput opts cfg
         db <- readSeqDB cfg
         FilterSeqs db (invert opts) . map parsePackedEntryErr <$> readStdin
 
-    | oeis opts = return $ SearchOEIS (limit opts) view (unwords (terms opts))
+    | oeis opts =
+        return $ SearchOEIS (tojson opts) (limit opts) view (unwords (terms opts))
 
     | query opts = do
         sdb <- readSeqDB cfg
@@ -83,7 +94,7 @@ readInput opts cfg
                        $  (Right . getPackedSeq <$> parsePackedEntry t)
                       <|> (Left <$> parseANum t)
                       <|> (Right . packSeq . map fromIntegral <$> parseIntegerSeq t)
-        SearchLocalDB sdb ndb (limit opts) view . map parseInp
+        SearchLocalDB sdb ndb (tojson opts) (limit opts) view . map parseInp
             <$> case map B.pack (terms opts) of
                   [] -> readStdin
                   ts -> return ts
@@ -95,8 +106,8 @@ few :: [a] -> Bool
 few (_:_:_) = False
 few _       = True
 
-allANum :: [(Query, a)] -> Bool
-allANum= all (\(q, _) -> B.head q == 'A')
+allANum :: [QA] -> Bool
+allANum= all (\(QA q _) -> B.head q == 'A')
 
 printReply :: View -> Reply -> IO ()
 printReply (width, pal, ks) (Reply (ANum anum) (Table table)) =
@@ -126,10 +137,12 @@ printOutput (Entries es) =
     forM_ es $ \(PackedEntry (PPrg p) (PSeq s)) ->
         B.putStrLn $ p <> " => {" <> s <> "}"
 
+printOutput (OEISRepliesJSON rss) = mapM_ (BL.putStrLn . encode) rss
+
 printOutput (OEISReplies view rss) = do
     let hideQuery = few rss || allANum rss
-    let noReplies = null $ concat $ snd (unzip rss)
-    forM_ (zip [1::Int ..] rss) $ \(i,(q,replies)) -> do
+    let noReplies = null $ concat [ rs | QA _ rs <- rss ]
+    forM_ (zip [1::Int ..] rss) $ \(i, QA q replies) -> do
         unless hideQuery $ do
             when (i > 1) $ putStrLn ""
             B.putStrLn ("query: " <> q)
@@ -150,23 +163,24 @@ sloane :: Input -> IO Output
 sloane inp =
     case inp of
 
-      SearchLocalDB sdb ndb maxReplies view ts -> do
+      SearchLocalDB sdb ndb jsonflag maxReplies view ts -> do
           let sm = M.fromList $ parseStripped (unDB sdb)
           let nm = M.fromList $ parseNames (unDB ndb)
-          return $ OEISReplies view
-              [ (q, mkReplies sm nm ks)
-              | (q, ks) <-
-                  [ case t of
-                      Right s@(PSeq r) -> (r, grepN maxReplies s sdb)
-                      Left (ANum anum) -> (anum, [ANum anum])
-                  | t <- ts
-                  ]
-              ]
+          let qas = [ QA q (mkReplies sm nm ks)
+                    | (q, ks) <-
+                        [ case t of
+                            Right s@(PSeq r) -> (r, grepN maxReplies s sdb)
+                            Left (ANum anum) -> (anum, [ANum anum])
+                        | t <- ts
+                        ]
+                    ]
+          return $ if jsonflag then OEISRepliesJSON qas else OEISReplies view qas
 
-      SearchOEIS lim view q -> do
+      SearchOEIS jsonflag lim view q -> do
           let kvs = [("n", B.pack (show lim)), ("q", B.pack q), ("fmt", "text")]
           replies <- requestPage oeisURL kvs
-          return $ OEISReplies view [(B.pack q, parseReplies replies)]
+          let qas = [QA (B.pack q) (parseReplies replies)]
+          return $ if jsonflag then OEISRepliesJSON qas else OEISReplies view qas
 
       FilterSeqs db invFlag es -> do
           let bloom = mkBloomFilter db

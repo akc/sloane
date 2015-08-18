@@ -56,7 +56,6 @@ import Data.Aeson
 import qualified Data.Attoparsec.ByteString as A
 import qualified Data.Attoparsec.ByteString.Char8 as Ch
 import Data.Attoparsec.ByteString.Char8
-import Control.DeepSeq
 import Control.Monad
 import Control.Applicative
 import Sloane.Utils
@@ -80,8 +79,6 @@ newtype ANum = ANum {unANum :: ByteString} deriving (Eq, Ord, Show, Generic)
 
 -- | A `PackedSeq` is a wrapped `ByteString`.
 newtype PackedSeq = PSeq {unPSeq :: ByteString} deriving (Eq, Show, Generic)
-
-instance NFData PackedSeq
 
 instance Monoid PackedSeq where
     mempty = PSeq mempty
