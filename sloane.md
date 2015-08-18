@@ -9,8 +9,8 @@ sloane: A command line interface to Sloane's OEIS.
 
 # SYNOPSIS
 
-**sloane** [OPTION] --oeis TERMS...  
-**sloane** [OPTION] (-q|--query) A-NUMBER/SEQUENCE...  
+**sloane** [ OPTION ] --oeis TERMS...  
+**sloane** [ OPTION ] (-q|--query) A-NUMBER/SEQUENCE...  
 **sloane** [--invert] --filter  
 
 # DESCRIPTION
@@ -83,7 +83,7 @@ this is unwanted, pipe the output through cat or less:
 
 ## Synopsis
 
-sloane [OPTION] (-q|--query) A-NUMBER/SEQUENCE...
+sloane [ OPTION ] (-q|--query) A-NUMBER/SEQUENCE...
 
 ## Description
 
