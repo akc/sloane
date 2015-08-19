@@ -86,7 +86,7 @@ optionsParser =
        <> help "Do not colorize the output" ) )
     <*> switch
         ( long "json"
-       <> help ("Return results is JSON format") )
+       <> help "Return results is JSON format" )
     <*> switch
         ( long "filter"
        <> help ("Read sequences from stdin and return"
