@@ -33,7 +33,6 @@ Executable sloane
                        Sloane.Utils
 
   ghc-options:         -Wall -fno-warn-unused-do-bind -fno-warn-missing-signatures
-                       -threaded -O2 -with-rtsopts=-N
 
   Build-depends:       aeson >=0.8,
                        ansi-terminal >=0.6,
