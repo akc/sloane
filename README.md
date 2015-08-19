@@ -3,7 +3,7 @@
 A command line interface to
 [The On-Line Encyclopedia of Integer Sequences](http://oeis.org).
 
-![demo](demo.gif)
+![demo](https://github.com/akc/sloane/raw/master/demo.gif)
 
 ## Install
 
@@ -21,4 +21,4 @@ $ cabal install sloane
 
 ## Usage
 
-See the [man page](sloane.md).
+See the [man page](https://github.com/akc/sloane/blob/master/sloane.md).

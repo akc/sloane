@@ -1,5 +1,5 @@
 ---
-title: SLOANE(1) User Manual | Version 4.0.0
+title: SLOANE(1) User Manual | Version 4.0.1
 date: 18 Aug 2015
 ---
 
@@ -9,9 +9,9 @@ sloane: A command line interface to Sloane's OEIS.
 
 # SYNOPSIS
 
-**sloane** OPTIONS --oeis TERMS...  
-**sloane** OPTIONS (-q|--query) A-NUMBER/SEQUENCE...  
-**sloane** [--invert] --filter  
+**sloane** `OPTIONS --oeis TERMS...`  
+**sloane** `OPTIONS (-q|--query) A-NUMBER/SEQUENCE...`  
+**sloane** `[--invert] --filter`  
 
 # DESCRIPTION
 
@@ -24,7 +24,7 @@ mode is the default.
 
 ## Synopsis
 
-sloane [--long] [-k KEYS] [-n N] [--all] [--monochrome] [--json] --oeis TERMS...
+`sloane [--long] [-k KEYS] [-n N] [--all] [--monochrome] [--json] --oeis TERMS...`
 
 ## Description
 
@@ -83,15 +83,15 @@ this is unwanted, pipe the output through cat or less:
 
 ## Synopsis
 
-sloane [--long] [-k KEYS] [-n N] [--all] [--monochrome] [--json] (-q|--query) A-NUMBER/SEQUENCE...
+`sloane [--long] [-k KEYS] [-n N] [--all] [--monochrome] [--json] (-q|--query) A-NUMBER/SEQUENCE...`
 
 ## Description
 
 Search locally against a downloaded local database of known
 sequences. This type of query is less flexible, but faster, than using
-the `--oeis` operation: With `sloane --query` one can only lookup
+the `--oeis` operation: With `--query` one can only lookup
 A-numbers and seqences; free text searches are not supported. Also, the
-fields returned by `sloane --query` are 'S' and 'N'.
+fields returned by `--query` are 'S' and 'N'.
 
 ## Examples
 
@@ -123,7 +123,7 @@ Same as for the `--oeis` operation.
 
 ## Synopsis
 
-sloane [--invert] --filter
+`sloane [--invert] --filter`
 
 ## Description
 
