@@ -9,8 +9,8 @@ sloane: A command line interface to Sloane's OEIS.
 
 # SYNOPSIS
 
-**sloane** [ OPTION ] --oeis TERMS...  
-**sloane** [ OPTION ] (-q|--query) A-NUMBER/SEQUENCE...  
+**sloane** OPTIONS --oeis TERMS...  
+**sloane** OPTIONS (-q|--query) A-NUMBER/SEQUENCE...  
 **sloane** [--invert] --filter  
 
 # DESCRIPTION
@@ -83,11 +83,15 @@ this is unwanted, pipe the output through cat or less:
 
 ## Synopsis
 
-sloane [ OPTION ] (-q|--query) A-NUMBER/SEQUENCE...
+sloane [--long] [-k KEYS] [-n N] [--all] [--monochrome] [--json] (-q|--query) A-NUMBER/SEQUENCE...
 
 ## Description
 
-Search locally against a downloaded local database of known sequences.
+Search locally against a downloaded local database of known
+sequences. This type of query is less flexible, but faster, than using
+the `--oeis` operation: With `sloane --query` one can only lookup
+A-numbers and seqences; free text searches are not supported. Also, the
+fields returned by `sloane --query` are 'S' and 'N'.
 
 ## Examples
 
