@@ -25,7 +25,7 @@ See the [man page](https://github.com/akc/sloane/blob/master/sloane.md).
 
 ## Issues
 
-Have you found a bug? Want to contribut to `sloane`? Please open a issue
+Have you found a bug? Want to contribute to `sloane`? Please open an issue
 at <https://github.com/akc/sloane/issues>.
 
 ## How to cite
