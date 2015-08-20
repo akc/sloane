@@ -5,8 +5,10 @@ cabal-dev
 *.hi
 *.chi
 *.chs.h
+sloane
 sloane.1
 sloane.html
+static-build/sloane
 README.html
 TODO.md
 result
