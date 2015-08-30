@@ -7,13 +7,19 @@ A command line interface to the
 
 ## Install
 
-If using the [nix](https://nixos.org/nix/) package manager:
+The easiest way to get started is to download a prebuilt binary. Such
+binaries can be found on the
+[releases page](https://github.com/akc/sloane/releases).
+The binaries are statically linked and should work on any Linux system.
+
+Alternative ways of installing `sloane` include
+using the [nix](https://nixos.org/nix/) package manager:
 
 ```
 $ nix-env -f "<nixpkgs>" -iA haskellPackages.sloane
 ```
 
-Otherwise, use [cabal](https://www.haskell.org/cabal/):
+Or using [cabal](https://www.haskell.org/cabal/):
 
 ```
 $ cabal install sloane
