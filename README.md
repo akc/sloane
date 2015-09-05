@@ -41,7 +41,7 @@ at <https://github.com/akc/sloane/issues>.
   author = "Anders Claesson",
   title  = "sloane: A command line interface to the OEIS",
   year   =  2015,
-  howpublished = "\url{http://akc.is/src/sloane}"
+  howpublished = "\url{http://akc.is/sloane}"
 }
 ```
 

@@ -178,8 +178,8 @@ http://oeis.org/wiki/Welcome#Policy_on_Searching_the_Database).
 
 # SEE ALSO
 
-**hops**(1) <http://akc.is/src/hops>  
-Source code for `sloane`: <http://akc.is/src/sloane>
+**hops**(1) <http://akc.is/hops>  
+Source code for `sloane`: <http://akc.is/sloane>
 
 # AUTHOR
 
