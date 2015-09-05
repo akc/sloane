@@ -1,43 +1,72 @@
 ---
-title: SLOANE(1) User Manual | Version 4.0.2
-date: 30 Aug 2015
+title: SLOANE(1) User Manual | Version 4.1.0
+date: 4 Sep 2015
 ---
 
 # NAME
 
-sloane: A command line interface to Sloane's OEIS.
+sloane - lookup integer sequences, OEIS A-numbers, etc.
 
 # SYNOPSIS
 
-**sloane** `OPTIONS --oeis TERMS...`  
-**sloane** `OPTIONS (-q|--query) A-NUMBER/SEQUENCE...`  
-**sloane** `[--invert] --filter`  
+`sloane [--long] [-k KEYS] [-n N] [--all] [--monochrome] [--json] [--oeis] TERMS...`  
+`sloane [--invert] --filter`  
 
 # DESCRIPTION
 
-The `sloane` command provides an interface to OEIS (The On-Line
-Encyclopedia of Integer Sequences). It can be used online with the
-`--oeis` operation, and offline with the `--query` operation; offline
-mode is the default.
+`sloane` provides a command line interface to Sloane's OEIS (The On-Line
+Encyclopedia of Integer Sequences). It can be used offline (the default)
+as well as online (with the `--oeis` option). Local searches are faster
+but a bit less flexible. A common way to use `sloane` is to search for
+entries matching a sequence of consecutive terms:
 
-# OPERATION --oeis
+    sloane 1,3,19,183,2371,38703
 
-## Synopsis
+At the time of writing this would return
 
-`sloane [--long] [-k KEYS] [-n N] [--all] [--monochrome] [--json] --oeis TERMS...`
+    S A006531 1,1,3,19,183,2371,38703,763099,17648823,468603091,14050842303,
+    N A006531 Semiorders on n elements.
 
-## Description
+As shown here the default is to return the sequence (S) and the name (N)
+fields. These are the only fields that are available in offline mode. In
+online mode all fields are available. To select among the fields use the
+`-k` option, or, to select all fields, use to `--long` option. The
+following search would show the sequence, name, comments, and formula
+fields:
 
-Lookup search terms in Sloane's On-Line Encyclopedia of Integer
-Sequences (OEIS).
+    sloane -k SNCF --oeis 1,3,19,183,2371,38703
 
-## Options
+One can also lookup A-numbers or do a free text search; see the
+**EXAMPLES** section.
 
---long
-:   Long format; print all fields.
+The `--filter` option can be very useful when checking a large number of
+sequences.  In this mode `sloane` reads standard input line-by-line, if
+the sequence read is in the local database, then it is returned to
+standard output; if not, it is ignored. This way one can quickly filter
+out the sequences from the input that are in the local database. To be
+concrete, assume that *FILE* contains one sequence per line. Then
+
+    sloane --filter <FILE
+
+returns the subset of the sequences in *FILE* that are in the local
+database. To also lookup the names of those sequences one could run
+
+    sloane --filter <FILE | sloane
+
+The way this works is that if `sloane` is called without search terms
+then it reads from standard input.
+
+# OPTIONS
+
+--oeis
+:   Online search; lookup the provided terms in Sloane's On-Line Encyclopedia
+    of Integer Sequences (OEIS).
 
 -k *KEYS*
 :   Keys of fields to print (default: SN).
+
+--long
+:   Long format; print all fields.
 
 -n *N*
 :   Fetch at most this many entries (default: 5).
@@ -52,102 +81,8 @@ Sequences (OEIS).
 --json
 :   Output results is JSON format.
 
-## Examples
-
-The most common search is for entries matching a sequence of consecutive terms:
-
-    sloane --oeis 1,3,19,183,2371,38703
-
-At the time of writing this particular query would return
-
-    S A006531 1,1,3,19,183,2371,38703,763099,17648823,468603091,14050842303,
-    N A006531 Semiorders on n elements.
-
-As this illustrates, the default is to return just the sequence (S) and
-the name (N) fields. To override the default one can use the keys
-option. For instance, the following search shows the sequence, name,
-comments, and formula fields of the sequence whose A-number is A006531:
-
-    sloane -k SNCF --oeis id:A006531
-
-The next example returns at most 3 results of a free text search:
-
-    sloane -n 3 --oeis "(2+2)-free posets"
-
-Sloane normally crops long lines to fit the widths of the terminal. If
-this is unwanted, pipe the output through cat or less:
-
-    sloane --long --oeis id:A000110 | less -R
-
-# OPERATION --query
-
-## Synopsis
-
-`sloane [--long] [-k KEYS] [-n N] [--all] [--monochrome] [--json] (-q|--query) A-NUMBER/SEQUENCE...`
-
-## Description
-
-Search locally against a downloaded local database of known
-sequences. This type of query is less flexible, but faster, than using
-the `--oeis` operation: With `--query` one can only lookup
-A-numbers and seqences; free text searches are not supported. Also, the
-fields returned by `--query` are 'S' and 'N'.
-
-## Examples
-
-Lookup A-numbers:
-
-    $ sloane --query A000111 A000112
-    
-    S A000111 1,1,1,2,5,16,61,272,1385,7936,50521,353792,2702765,
-    N A000111 Euler or up/down numbers: e.g.f. sec(x) + tan(x)..
-    
-    S A000112 1,1,2,5,16,63,318,2045,16999,183231,2567284,46749427,
-    N A000112 Number of partially ordered sets ("posets") with n..
-
-Lookup a sequence:
-
-    $ sloane -n2 -q 1,1,2,5,15,52,203,877,4140,21147,115975,678570,
-    
-    S A000110 1,1,2,5,15,52,203,877,4140,21147,115975,678570,4213597,
-    N A000110 Bell or exponential numbers: number of ways to partition..
-    
-    S A192128 1,1,2,5,15,52,203,877,4140,21147,115975,678570,4213597,
-    N A192128 Number of set partitions of {1, ..., n} that avoid..
-
-## Options
-
-Same as for the `--oeis` operation.
-
-# OPERATION --filter
-
-## Synopsis
-
-`sloane [--invert] --filter`
-
-## Description
-
-To check a large number of sequences one can use `--filter`.  When this
-option is set, `sloane` reads the standard input line-by-line, if the
-sequence read is in the local database, then it is returned to the
-standard output; if not, it is ignored. This way one can quickly filter
-out the sequences from the input that are in the local database. In
-other words, assuming that *FILE* contains one sequence per line,
-
-    sloane --filter <FILE
-
-returns the subset of the sequences in *FILE* that are in the local
-database. To also lookup the names of those sequences one could, for
-instance, run
-
-    sloane --filter <FILE | sloane -q
-
-## Flag
-
 --invert
-:   Return sequences *not* in the database.
-
-# ADDITIONAL OPERATIONS
+:   Return sequences *not* in the database (used with `--filter`).
 
 --update
 :   Update the local database.
@@ -158,10 +93,55 @@ instance, run
 --help
 :   Briefly describe the available options.
 
+# EXAMPLES
+
+Lookup A-numbers:
+
+    $ sloane A000111 A000112
+    
+    S A000111 1,1,1,2,5,16,61,272,1385,7936,50521,353792,2702765,
+    N A000111 Euler or up/down numbers: e.g.f. sec(x) + tan(x)..
+    
+    S A000112 1,1,2,5,16,63,318,2045,16999,183231,2567284,46749427,
+    N A000112 Number of partially ordered sets ("posets") with n..
+
+Lookup a sequence (limit to at most two results):
+
+    $ sloane -n2 1,1,2,5,15,52,203,877,4140,21147,115975,678570,
+    
+    S A000110 1,1,2,5,15,52,203,877,4140,21147,115975,678570,4213597,
+    N A000110 Bell or exponential numbers: number of ways to partition..
+    
+    S A192128 1,1,2,5,15,52,203,877,4140,21147,115975,678570,4213597,
+    N A192128 Number of set partitions of {1, ..., n} that avoid..
+
+Lookup a sequence generated by **hops**(1):
+
+    $ hops 'y=1+integral(2*y^2-y);laplace(y)' | sloane
+
+    S A000670 1,1,3,13,75,541,4683,47293,545835,7087261,102247563,
+    N A000670 Fubini numbers: number of preferential arrangements of..
+
+    S A034172 1,1,3,13,75,541,4683,47293,545835,7087261,102247563,
+    N A034172 Nearest integer to n!/(2*log(2)^(n+1)).
+
+Show the sequence, name, comments, and formula fields of the sequence
+whose A-number is A006531:
+
+    sloane -k SNCF --oeis id:A006531
+
+Return at most 3 results of a free text search:
+
+    sloane -n 3 --oeis "(2+2)-free posets"
+
+`sloane` normally crops long lines to fit the widths of the terminal. If
+this is unwanted, pipe the output through cat or less:
+
+    sloane --long --oeis id:A000110 | less -R
 
 # KEYS
 
-These are the keys used by OEIS <http://oeis.org/eishelp2.html>.
+These are the [keys used by the OEIS](http://oeis.org/eishelp2.html).
 
     I  ID number
 
@@ -192,13 +172,14 @@ These are the keys used by OEIS <http://oeis.org/eishelp2.html>.
 
 # NOTES
 
-Please use the `--oeis` option with moderation as not to overburden the
-OEIS-server; see OEIS' policy on searching the database:
-<http://oeis.org/wiki/Welcome#Policy_on_Searching_the_Database>.
+Please use the `--oeis` option with some moderation as not to overburden
+the OEIS-server; see [OEIS' policy on searching the database](
+http://oeis.org/wiki/Welcome#Policy_on_Searching_the_Database).
 
 # SEE ALSO
 
-<http://akc.is/src/sloane>
+**hops**(1) <http://akc.is/src/hops>  
+Source code for `sloane`: <http://akc.is/src/sloane>
 
 # AUTHOR
 

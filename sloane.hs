@@ -36,7 +36,7 @@ import Sloane.Download
 import Sloane.Bloom
 import Sloane.DB
 
-nameVer  = "sloane 4.0.2"                 :: String
+nameVer  = "sloane 4.1.0"                 :: String
 oeisURL  = "https://oeis.org/search"      :: URL
 strpdURL = "https://oeis.org/stripped.gz" :: URL
 namesURL = "https://oeis.org/names.gz"    :: URL
@@ -87,7 +87,7 @@ readInput opts cfg
     | oeis opts =
         return $ SearchOEIS (tojson opts) (limit opts) view (unwords (terms opts))
 
-    | query opts = do
+    | otherwise = do
         sdb <- readSeqDB cfg
         ndb <- readNamesDB cfg
         let parseInp t = fromMaybe (error "cannot parse input")
@@ -98,7 +98,6 @@ readInput opts cfg
             <$> case map B.pack (terms opts) of
                   [] -> readStdin
                   ts -> return ts
-    | otherwise = readInput (opts {query = True}) cfg
   where
     view = (termWidth cfg, palette opts, keys opts)
 

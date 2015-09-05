@@ -26,10 +26,8 @@ monochrome Colorful   = False
 -- | Command line options:
 data Options = Options
     {
-    -- | Search the local DB.
-      query          :: Bool
     -- | Search oeis.org.
-    , oeis           :: Bool
+      oeis           :: Bool
     -- | Print all fields?
     , longFormat     :: Bool
     -- | Keys of fields to print.
@@ -59,10 +57,6 @@ optionsParser :: Parser Options
 optionsParser =
   abortOption ShowHelpText (long "help") <*> (Options
     <$> switch
-        ( short 'q'
-       <> long "query"
-       <> help "Search the local database" )
-    <*> switch
         ( long "oeis"
        <> help "Search oeis.org" )
     <*> switch
