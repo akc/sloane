@@ -5,7 +5,7 @@ Synopsis:            A command line interface to Sloane's OEIS.
 Description:         A command line interface to Sloane's On-Line Encyclopedia of
                      Integer Sequences with offline capabilities.
 
-Homepage:            http://github.com/akc/sloane
+Homepage:            http://akc.is/sloane
 License:             BSD3
 License-file:        LICENSE
 Author:              Anders Claesson
