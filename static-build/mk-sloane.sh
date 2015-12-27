@@ -10,6 +10,8 @@ else
     cd sloane
 fi
 
+echo "constraints: http-conduit ==2.1.7" >cabal.config
+
 cabal update
 cabal install --only-dependencies
 
