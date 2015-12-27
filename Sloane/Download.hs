@@ -19,6 +19,9 @@ import Control.Monad.IO.Class (liftIO)
 import Sloane.OEIS (URL)
 import System.Console.ANSI
 import System.IO
+#if !MIN_VERSION_base(4,8,0)
+import Control.Applicative
+#endif
 
 #if MIN_VERSION_http_conduit(2,1,7)
 
@@ -46,10 +49,6 @@ download col url fpath = do
         progress total acc')
 
 #else
-
-#if !MIN_VERSION_base(4,8,0)
-import Control.Applicative
-#endif
 
 import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Lazy.Char8 as BL
