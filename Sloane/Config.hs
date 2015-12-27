@@ -35,7 +35,7 @@ getConfig = do
     w <- maybe maxBound width `fmap` size
     h <- getHomeDirectory
     let c = Config { home        = h
-                   , sloaneDir   = h </> ".sloane"
+                   , sloaneDir   = h </> ".oeis-data"
                    , seqDBPath   = sloaneDir c </> "stripped"
                    , namesDBPath = sloaneDir c </> "names"
                    , termWidth   = w
