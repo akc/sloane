@@ -10,6 +10,9 @@ else
     cd sloane
 fi
 
+cp cabal.config cabal.config.orig
+echo "constraints: http-conduit ==2.1.7" >cabal.config
+
 cabal update
 cabal install --only-dependencies
 
@@ -22,3 +25,5 @@ ghc --make -O2 -optl-static -fforce-recomp \
     -optP-include -optPdist/build/autogen/cabal_macros.h sloane.hs
 
 strip -s sloane
+
+mv cabal.config.orig cabal.config
