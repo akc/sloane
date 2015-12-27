@@ -36,7 +36,7 @@ import Sloane.Download
 import Sloane.Bloom
 import Sloane.DB
 
-nameVer  = "sloane 4.1.2"                 :: String
+nameVer  = "sloane 4.2.0"                 :: String
 oeisURL  = "https://oeis.org/search"      :: URL
 strpdURL = "https://oeis.org/stripped.gz" :: URL
 namesURL = "https://oeis.org/names.gz"    :: URL
