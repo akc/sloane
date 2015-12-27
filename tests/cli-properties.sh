@@ -16,14 +16,14 @@ check () {
   fi
 }
 
-check 'sloane --monochrome -q A001111' "`cat <<EOF
+check 'sloane --monochrome A001111' "`cat <<EOF
 
 S A001111 1,1,1,5,6,1106,208310,10374196953
 N A001111 Number of inequivalent Hadamard designs of order 4n.
 
 EOF`"
 
-check 'sloane --monochrome -q A000001 1,1,1,5,6,1106,208310,10374196953' \
+check 'sloane --monochrome A000001 1,1,1,5,6,1106,208310,10374196953' \
 "`cat <<EOF
 query: A000001
 
