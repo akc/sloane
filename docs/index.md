@@ -33,8 +33,9 @@ $ cabal install sloane
 
 ## Documentation
 
-The [man page](man) documents command line options and provides many
-examples.
+- The [man page](man) documents command line options and provides many
+  examples.
+- How to enable [bash completion](bash-completion).
 
 ## Contribute
 
