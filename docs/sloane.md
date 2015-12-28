@@ -19,8 +19,8 @@ Encyclopedia of Integer Sequences). It can be used offline (the default)
 as well as online (with the `--oeis` option). Local searches are faster
 but a bit less flexible. The first time `sloane` is used in offline mode
 the user will be asked to run `sloane --update`. This will download
-`https://oeis.org/{names.gz, stripped.gz}` and unpack them into
-`.oeis-data/{names, stripped}` in the home directory. Alternatively,
+`https://oeis.org/{names.gz,stripped.gz}` and unpack them into
+`.oeis-data/{names,stripped}` in the home directory. Alternatively,
 one can do this by hand using `wget` and `gunzip`, say, if prefered.
 
 A common way to use `sloane` is to search for entries matching a
