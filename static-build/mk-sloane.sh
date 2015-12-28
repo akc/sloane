@@ -2,15 +2,15 @@
 
 cd /tmp/x
 
-if cd sloane
+if cd sloane 2>/dev/null
 then
-    git pull
+    git fetch
 else
     git clone https://github.com/akc/sloane.git
     cd sloane
 fi
+git reset --hard origin/master
 
-cp cabal.config cabal.config.orig
 echo "constraints: http-conduit ==2.1.7" >cabal.config
 
 cabal update
@@ -25,5 +25,3 @@ ghc --make -O2 -optl-static -fforce-recomp \
     -optP-include -optPdist/build/autogen/cabal_macros.h sloane.hs
 
 strip -s sloane
-
-mv cabal.config.orig cabal.config
