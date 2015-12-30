@@ -46,21 +46,46 @@ One can also lookup A-numbers or do a free text search; see the
 **EXAMPLES** section.
 
 The `--filter` option can be very useful when checking a large number of
-sequences.  In this mode `sloane` reads standard input line-by-line, if
-the sequence read is in the local database, then it is returned to
-standard output; if not, it is ignored. This way one can quickly filter
-out the sequences from the input that are in the local database. To be
-concrete, assume that *FILE* contains one sequence per line. Then
+sequences.  In this mode `sloane` expects input in the form returned by
+**hops**(1). It reads standard input line-by-line, if the sequence in
+the right hand side of the entry read is in the local database, then the
+entry is returned to standard output; if not, it is ignored. This way
+one can quickly filter out the sequences from the input that are in the
+local database. To be concrete, assume that *FILE* contains these
+entries:
+
+    CATALAN(1/(1-2*x)) => {1,2,6,20,70,252,924,3432,12870,48620}
+    CATALANi(1/(1-2*x)) => {1,2,2,0,-4,-8,-8,0,16,32}
+    CONV(1/(1-2*x)) => {1,4,12,32,80,192,448,1024,2304,5120}
+    BIN1(1/(1-2*x)) => {1,-4,13,-40,121,-364,1093,-3280,9841}
+
+Then
 
     sloane --filter <FILE
 
 returns the subset of the sequences in *FILE* that are in the local
-database. To also lookup the names of those sequences one could run
+database. In this case, all but the last one. To also lookup the names of
+those sequences one could run
 
     sloane --filter <FILE | sloane
 
-The way this works is that if `sloane` is called without search terms
-then it reads from standard input.
+If the sequences one wishes to filter are not already in form returned
+by `hops` then one may mold them into that form using `hops --tag`. For
+instanse, if *FILE* consists of
+
+    1,2,6,20,70,252,924,3432,12870,48620
+    1,2,2,0,-4,-8,-8,0,16,32
+    1,4,12,32,80,192,448,1024,2304,5120
+    1,-4,13,-40,121,-364,1093,-3280,9841
+
+Then `hops --tag 1 <FILE` would result in
+
+    TAG000001 => {1,2,6,20,70,252,924,3432,12870,48620}
+    TAG000002 => {1,2,2,0,-4,-8,-8,0,16,32}
+    TAG000003 => {1,4,12,32,80,192,448,1024,2304,5120}
+    TAG000004 => {1,-4,13,-40,121,-364,1093,-3280,9841}
+
+which can be filtered through `sloane` as above.
 
 # OPTIONS
 
