@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
 
@@ -16,8 +15,7 @@ module Sloane.OEIS
     , Name
     , ANum (..)
     , PackedSeq (..)
-    , Table (..)
-    , Reply (..)
+    , OEISEntry (..)
     -- * Parse names.gz and stripped.gz
     , parseNames
     , parseStripped
@@ -25,7 +23,7 @@ module Sloane.OEIS
     , parseTermsOfRecords
     -- * Parse replies from oeis.org
     , oeisKeys
-    , parseReplies
+    , parseOEISEntries
     -- * Parse sequences
     , shave
     , parseSeqErr
@@ -41,9 +39,7 @@ module Sloane.OEIS
 
 import GHC.Generics (Generic)
 import Data.Maybe
-#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid
-#endif
 import Data.String
 import Data.Ratio
 import Data.Map (Map)
@@ -87,13 +83,7 @@ instance Monoid PackedSeq where
 instance IsString PackedSeq where
     fromString = PSeq . fromString
 
--- | A `Table` represents an OEIS entry. It is a `Map` from OEIS keys to
--- lists of `ByteString`s.
-newtype Table = Table (Map Key [ByteString]) deriving Show
-
--- | A `Reply` is an A-number together with an associated `Table` (OEIS
--- entry).
-data Reply = Reply ANum Table deriving Show
+data OEISEntry = OEISEntry ANum (Map Key [ByteString]) deriving Show
 
 instance ToJSON ANum where
     toJSON (ANum bs) = String (decodeUtf8 bs)
@@ -109,26 +99,17 @@ instance FromJSON PackedSeq where
     parseJSON (String s) = pure $ PSeq (encodeUtf8 s)
     parseJSON _ = mzero
 
-instance ToJSON Table where
-    toJSON (Table tbl) =
-        object [ T.singleton key .= toJSON (map decodeUtf8 ls)
-               | (key, ls) <- M.toList tbl
-               ]
+instance ToJSON OEISEntry where
+    toJSON (OEISEntry anum tbl) =
+        object ("A-number" .= toJSON anum :
+                [ T.singleton key .= toJSON (map decodeUtf8 ls)
+                | (key, ls) <- M.toList tbl
+                ])
 
-instance ToJSON Reply where
-    toJSON (Reply anum table) =
-        object [ "A-number" .= toJSON anum
-               , "table" .= toJSON table
-               ]
-
-instance FromJSON Table where
+instance FromJSON OEISEntry where
     parseJSON (Object v) =
         let f k = (,) <$> pure k <*> (map encodeUtf8 <$> v .: T.singleton k)
-        in Table . M.fromList <$> mapM f oeisKeys
-    parseJSON _ = mzero
-
-instance FromJSON Reply where
-    parseJSON (Object v) = Reply <$> v .: "A-number" <*> v .: "table"
+        in OEISEntry <$> (v .: "A-number") <*> (M.fromList <$> mapM f oeisKeys)
     parseJSON _ = mzero
 
 spc :: Parser Char
@@ -203,22 +184,21 @@ row = (,,)
   where
     rest = A.takeTill isEndOfLine <* endOfLine
 
-rows :: Parser Reply
-rows = mkMap1 <$> many1 row
-  where
-    mkMap2 = Table . M.fromListWith (flip (++))
-    mkMap1 rs@((_,a,_):_) = Reply a $ mkMap2 (map (\(key, _, r) -> (key, [r])) rs)
-    mkMap1 [] = error "internal error"
-
 noise :: Parser ()
 noise = skipMany (notChar '%')
 
-replies :: Parser [Reply]
-replies = concat <$> (noise *> (many1 rows `sepBy` many1 endOfLine) <* noise)
+oeisEntry :: Parser OEISEntry
+oeisEntry = mkMap1 <$> many1 row
+  where
+    mkMap2 = M.fromListWith (flip (++))
+    mkMap1 rs@((_,a,_):_) = OEISEntry a $ mkMap2 (map (\(key, _, r) -> (key, [r])) rs)
+    mkMap1 [] = error "internal error"
 
--- | Parse OEIS replies as recieved from @oeis.org/search?fmt=text@.
-parseReplies :: ByteString -> [Reply]
-parseReplies = fromMaybe [] . parse_ replies
+oeisEntries :: Parser [OEISEntry]
+oeisEntries = concat <$> (noise *> (many1 oeisEntry `sepBy` many1 endOfLine) <* noise)
+
+parseOEISEntries :: ByteString -> [OEISEntry]
+parseOEISEntries = fromMaybe [] . parse_ oeisEntries
 
 -------------------------------------------------------------------------------
 -- Parse sequences

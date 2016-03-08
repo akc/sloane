@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
 
@@ -9,46 +8,51 @@
 --
 
 module Sloane.Entry
-    ( PackedPrg (..)
-    , PackedEntry (..)
-    , parsePackedEntry
-    , parsePackedEntryErr
+    ( Sequence
+    , Entry (..)
     ) where
 
-import GHC.Generics (Generic)
-import Data.Maybe
+import Data.Ratio
+import Data.Aeson
 import Data.ByteString.Char8 (ByteString)
-import qualified Data.ByteString.Char8 as B
-import qualified Data.Attoparsec.ByteString.Char8 as Ch
-import Data.Attoparsec.ByteString.Char8
+import Data.Text.Encoding (encodeUtf8, decodeUtf8)
 import Control.Monad
-#if __GLASGOW_HASKELL__ < 710
 import Control.Applicative
-#endif
-import Sloane.Utils
-import Sloane.OEIS
 
--- | A compact `ByteString` representation of a `Prg`.
-newtype PackedPrg = PPrg ByteString deriving (Eq, Show, Generic)
+newtype Prg = Prg ByteString deriving (Show, Eq)
+type Sequence = [Rational]
 
--- | Similary, a packed entry consists of a packed program together with
--- a packed sequence.
-data PackedEntry = PackedEntry
-    { getPackedPrg :: PackedPrg
-    , getPackedSeq :: PackedSeq
-    } deriving (Eq, Show, Generic)
+instance ToJSON Prg where
+    toJSON (Prg bs) = String (decodeUtf8 bs)
 
-packedEntry :: Parser PackedEntry
-packedEntry =
-    let f w = if B.last w == '=' then return (PPrg (B.init w)) else mzero
-    in PackedEntry <$> (Ch.takeWhile1 (/='>') >>= f)
-                   <*> (char '>' *> packedSeq)
+instance FromJSON Prg where
+    parseJSON (String s) = pure $ Prg (encodeUtf8 s)
+    parseJSON _ = mzero
 
--- | A parser for packed entries.
-parsePackedEntry :: ByteString -> Maybe PackedEntry
-parsePackedEntry = parse_ packedEntry . B.filter (/=' ')
+-- | An entry consists of a program together with a list of rational
+-- numbers.
+data Entry = Entry
+    { getPrg :: Prg
+    , getSeq :: Sequence
+    } deriving (Eq, Show)
 
--- | Like `parsePackedEntry` but throws an error rather than returning
--- `Nothing` in case the parse fails.
-parsePackedEntryErr :: ByteString -> PackedEntry
-parsePackedEntryErr = fromMaybe (error "cannot parse input") . parsePackedEntry
+instance ToJSON Entry where
+    toJSON (Entry prg s) =
+        object ([ "hops" .= toJSON prg
+                , "nums" .= toJSON (map numerator s)
+                ] ++
+                [ "dnos" .= toJSON ds
+                | let ds = map denominator s
+                , any (/=1) ds  -- For terseness only include denominators if
+                                -- at least one of them isn't 1
+                ])
+
+instance FromJSON Entry where
+    parseJSON (Object v) = do
+        prg <- v .:  "hops"
+        ns  <- v .:  "nums"
+        mds <- v .:? "dnos"
+        return $ case mds of
+             Nothing -> Entry prg (map fromIntegral ns)
+             Just ds -> Entry prg (zipWith (%) ns ds)
+    parseJSON _ = mzero

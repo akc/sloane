@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PolyKinds #-}
@@ -17,9 +16,7 @@ module Sloane.DB
     , grep
     ) where
 
-#if __GLASGOW_HASKELL__ < 710
 import Control.Applicative
-#endif
 import Data.Maybe
 import Data.List
 import Data.ByteString (ByteString)
