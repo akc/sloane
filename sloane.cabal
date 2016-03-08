@@ -1,5 +1,5 @@
 Name:                sloane
-Version:             4.2.0
+Version:             5.0.0
 Synopsis:            A command line interface to Sloane's OEIS.
 
 Description:         A command line interface to Sloane's On-Line Encyclopedia of
@@ -49,7 +49,6 @@ Executable sloane
                        http-types >=0.8,
                        optparse-applicative >=0.10,
                        stringsearch >=0.3,
-                       terminal-size >=0.2,
                        text >=0.11,
                        transformers >=0.3,
                        resourcet >=1.1

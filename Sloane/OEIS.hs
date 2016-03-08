@@ -1,9 +1,8 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
 
 -- |
--- Copyright   : Anders Claesson 2015
+-- Copyright   : Anders Claesson 2015, 2016
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 -- License     : BSD-3
 --
@@ -12,40 +11,28 @@ module Sloane.OEIS
     (
     -- * Types
       URL
-    , Key
-    , Name
     , ANum (..)
     , PackedSeq (..)
-    , Table (..)
-    , Reply (..)
+    , OEISEntry (..)
     -- * Parse names.gz and stripped.gz
     , parseNames
     , parseStripped
     , parseTermsErr
     , parseTermsOfRecords
     -- * Parse replies from oeis.org
-    , oeisKeys
-    , parseReplies
+    , parseOEISEntries
     -- * Parse sequences
     , shave
-    , parseSeqErr
     , parseIntegerSeq
-    , packedSeq
     , packSeq
     -- * Parse A-numbers and B-numbers
-    , aNumInt
     , parseANum
-    , packANum
-    , tag
     ) where
 
 import GHC.Generics (Generic)
 import Data.Maybe
-#if __GLASGOW_HASKELL__ < 710
 import Data.Monoid
-#endif
 import Data.String
-import Data.Ratio
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.ByteString.Char8 (ByteString)
@@ -54,28 +41,31 @@ import qualified Data.Text as T
 import Data.Text.Encoding (encodeUtf8, decodeUtf8)
 import Data.Aeson
 import qualified Data.Attoparsec.ByteString as A
-import qualified Data.Attoparsec.ByteString.Char8 as Ch
 import Data.Attoparsec.ByteString.Char8
 import Control.Monad
 import Control.Applicative
 import Sloane.Utils
+import Sloane.Entry
 
 -- | An OEIS key is `Char`.
-type Key  = Char
+type Key = Char
 
--- | The name of an OEIS entry is a short description of the
--- sequence. Here represented as a `ByteString`.
-type Name = ByteString
-
-type Row  = (Key, ANum, ByteString)
+type Row = (Key, ANum, ByteString)
 
 -- | A URL is currently just a synonym for `String`.
-type URL  = String
+type URL = String
 
 -- | An A-number is the character \'A\' followed by a six digit
 -- number. Here we represent that by a wrapped (7 character)
 -- `ByteString`.
 newtype ANum = ANum {unANum :: ByteString} deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ANum where
+    toJSON (ANum bs) = String (decodeUtf8 bs)
+
+instance FromJSON ANum where
+    parseJSON (String s) = pure $ ANum (encodeUtf8 s)
+    parseJSON _ = mzero
 
 -- | A `PackedSeq` is a wrapped `ByteString`.
 newtype PackedSeq = PSeq {unPSeq :: ByteString} deriving (Eq, Show, Generic)
@@ -87,21 +77,6 @@ instance Monoid PackedSeq where
 instance IsString PackedSeq where
     fromString = PSeq . fromString
 
--- | A `Table` represents an OEIS entry. It is a `Map` from OEIS keys to
--- lists of `ByteString`s.
-newtype Table = Table (Map Key [ByteString]) deriving Show
-
--- | A `Reply` is an A-number together with an associated `Table` (OEIS
--- entry).
-data Reply = Reply ANum Table deriving Show
-
-instance ToJSON ANum where
-    toJSON (ANum bs) = String (decodeUtf8 bs)
-
-instance FromJSON ANum where
-    parseJSON (String s) = pure $ ANum (encodeUtf8 s)
-    parseJSON _ = mzero
-
 instance ToJSON PackedSeq where
     toJSON (PSeq bs) = String (decodeUtf8 bs)
 
@@ -109,26 +84,19 @@ instance FromJSON PackedSeq where
     parseJSON (String s) = pure $ PSeq (encodeUtf8 s)
     parseJSON _ = mzero
 
-instance ToJSON Table where
-    toJSON (Table tbl) =
-        object [ T.singleton key .= toJSON (map decodeUtf8 ls)
-               | (key, ls) <- M.toList tbl
-               ]
+data OEISEntry = OEISEntry ANum (Map Key [ByteString]) deriving Show
 
-instance ToJSON Reply where
-    toJSON (Reply anum table) =
-        object [ "A-number" .= toJSON anum
-               , "table" .= toJSON table
-               ]
+instance ToJSON OEISEntry where
+    toJSON (OEISEntry anum tbl) =
+        object ("A-number" .= toJSON anum :
+                [ T.singleton key .= toJSON (map decodeUtf8 ls)
+                | (key, ls) <- M.toList tbl
+                ])
 
-instance FromJSON Table where
+instance FromJSON OEISEntry where
     parseJSON (Object v) =
         let f k = (,) <$> pure k <*> (map encodeUtf8 <$> v .: T.singleton k)
-        in Table . M.fromList <$> mapM f oeisKeys
-    parseJSON _ = mzero
-
-instance FromJSON Reply where
-    parseJSON (Object v) = Reply <$> v .: "A-number" <*> v .: "table"
+        in OEISEntry <$> (v .: "A-number") <*> (M.fromList <$> mapM f oeisKeys)
     parseJSON _ = mzero
 
 spc :: Parser Char
@@ -155,8 +123,8 @@ parseRecords = mapMaybe (parse_ record) . dropHeader . B.lines
 --
 -- > A000108 Catalan numbers: C(n) = binomial(2n,n)/(n+1) = (2n)!/(n!(n+1)!).
 --
-parseNames :: ByteString -> [(ANum, ByteString)]
-parseNames = parseRecords
+parseNames :: ByteString -> [(ANum, Name)]
+parseNames bs = [ (a, Name n) | (a, n) <- parseRecords bs ]
 
 -- | Parse a list of A-number-sequence pairs. It's purpose is to parse
 -- lines of the @stripped@ file. A typical line of that file looks like
@@ -164,8 +132,8 @@ parseNames = parseRecords
 --
 -- > A000108 ,1,1,2,5,14,42,132,429,1430,4862,16796,58786,208012,742900,
 --
-parseStripped :: ByteString -> [(ANum, PackedSeq)]
-parseStripped bs = [ (anum, PSeq (shave s)) | (anum, s) <- parseRecords bs ]
+parseStripped :: ByteString -> [(ANum, [Integer])]
+parseStripped bs = [ (anum, parseIntegerSeqErr (shave s)) | (anum, s) <- parseRecords bs ]
 
 -------------------------------------------------------------------------------
 -- Building the Bloom filter
@@ -203,61 +171,43 @@ row = (,,)
   where
     rest = A.takeTill isEndOfLine <* endOfLine
 
-rows :: Parser Reply
-rows = mkMap1 <$> many1 row
-  where
-    mkMap2 = Table . M.fromListWith (flip (++))
-    mkMap1 rs@((_,a,_):_) = Reply a $ mkMap2 (map (\(key, _, r) -> (key, [r])) rs)
-    mkMap1 [] = error "internal error"
-
 noise :: Parser ()
 noise = skipMany (notChar '%')
 
-replies :: Parser [Reply]
-replies = concat <$> (noise *> (many1 rows `sepBy` many1 endOfLine) <* noise)
+oeisEntry :: Parser OEISEntry
+oeisEntry = mkMap1 <$> many1 row
+  where
+    mkMap2 = M.fromListWith (flip (++))
+    mkMap1 rs@((_,a,_):_) = OEISEntry a $ mkMap2 (map (\(key, _, r) -> (key, [r])) rs)
+    mkMap1 [] = error "internal error"
 
--- | Parse OEIS replies as recieved from @oeis.org/search?fmt=text@.
-parseReplies :: ByteString -> [Reply]
-parseReplies = fromMaybe [] . parse_ replies
+oeisEntries :: Parser [OEISEntry]
+oeisEntries = concat <$> (noise *> (many1 oeisEntry `sepBy` many1 endOfLine) <* noise)
+
+parseOEISEntries :: ByteString -> [OEISEntry]
+parseOEISEntries = fromMaybe [] . parse_ oeisEntries
 
 -------------------------------------------------------------------------------
 -- Parse sequences
 -------------------------------------------------------------------------------
 
-rat :: Parser Rational
-rat = (%) <$> signed decimal <*> ((char '/' *> decimal) <|> return 1)
-
-ratSeq :: Parser [Rational]
-ratSeq = rat `sepBy` char ','
-
 integerSeq :: Parser [Integer]
 integerSeq = signed decimal `sepBy` char ','
-
-parseSeq :: ByteString -> Maybe [Rational]
-parseSeq = parse_ (ratSeq <* endOfInput) . B.filter (/=' ')
-
--- | Parse a sequence of `Rational`s.
-parseSeqErr :: ByteString -> [Rational]
-parseSeqErr = fromMaybe (error "error parsing sequence") . parseSeq
 
 -- | Parse a sequence of `Integer`s.
 parseIntegerSeq :: ByteString -> Maybe [Integer]
 parseIntegerSeq = parse_ (integerSeq <* endOfInput) . B.filter (/=' ')
 
--- | Parser for `PackedSeq`.
-packedSeq :: Parser PackedSeq
-packedSeq = PSeq <$> (char '{' *> Ch.takeWhile (/='}') <* char '}')
+-- | Parse a sequence of `Integer`s or throw an error.
+parseIntegerSeqErr :: ByteString -> [Integer]
+parseIntegerSeqErr = fromMaybe (error "error parsing sequence") . parseIntegerSeq
 
--- | Pack a sequence of `Rational`s into a `PackedSeq`. E.g.
+-- | Pack a sequence of `Integers`s into a `PackedSeq`. E.g.
 --
--- > packSeq [1,1/2,1/3] = PSeq {unPSeq = "1,1/2,1/3"}
+-- > packSeq [1,-1,3] = PSeq {unPSeq = "1,-1,3"}
 --
-packSeq :: [Rational] -> PackedSeq
-packSeq = PSeq . B.intercalate (B.pack ",") . map (B.pack . f)
-  where
-    f r = case (numerator r, denominator r) of
-            (n, 1) -> show n
-            (n, d) -> show n ++ '/':show d
+packSeq :: [Integer] -> PackedSeq
+packSeq = PSeq . B.intercalate (B.pack ",") . map (B.pack . show)
 
 -------------------------------------------------------------------------------
 -- Utility functions
@@ -274,10 +224,6 @@ shave = B.init . B.tail
 aNumInt :: Parser Int
 aNumInt = char 'A' >> decimal
 
--- | Run the `aNumInt` parser.
-parseANum :: ByteString -> Maybe ANum
-parseANum = parse_ (packANum <$> aNumInt)
-
 -- | Pack an A-number given as an `Int` into a wrapped `ByteString`
 -- consistsing of an \'A\' followed by six digits. E.g.
 --
@@ -286,6 +232,6 @@ parseANum = parse_ (packANum <$> aNumInt)
 packANum :: Int -> ANum
 packANum anum = ANum $ B.cons 'A' (pad 6 anum)
 
--- | A parser for tags (B-numbers) as `Int`s.
-tag :: Parser Int
-tag = string "TAG" >> decimal
+-- | Run the `aNumInt` parser.
+parseANum :: ByteString -> Maybe ANum
+parseANum = parse_ (packANum <$> aNumInt)

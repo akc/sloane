@@ -1,6 +1,6 @@
 ---
-title: SLOANE(1) User Manual | Version 4.2.0
-date: 28 Dec 2015
+title: SLOANE(1) User Manual | Version 5.0.0
+date: 22 March 2016
 ---
 
 # NAME
@@ -9,19 +9,20 @@ sloane - lookup integer sequences, OEIS A-numbers, etc.
 
 # SYNOPSIS
 
-`sloane [--long] [-k KEYS] [-n N] [--all] [--monochrome] [--json] [--oeis] TERMS...`  
+`sloane [-n N] [--all] [--oeis] TERMS...`  
 `sloane [--invert] --filter`  
+`sloane (--update|--version|--help)`   
 
 # DESCRIPTION
 
 `sloane` provides a command line interface to Sloane's OEIS (The On-Line
 Encyclopedia of Integer Sequences). It can be used offline (the default)
-as well as online (with the `--oeis` option). Local searches are faster
-but a bit less flexible. The first time `sloane` is used in offline mode
-the user will be asked to run `sloane --update`. This will download
+as well as online (with the `--oeis` option).  The first time `sloane`
+is used in offline mode the user will be asked to run
+`sloane --update`. This will download
 `https://oeis.org/{names.gz,stripped.gz}` and unpack them into
-`.oeis-data/{names,stripped}` in the home directory. Alternatively,
-one can do this by hand using `wget` and `gunzip`, say, if prefered.
+`.oeis-data/{names,stripped}` in the home directory. Alternatively, one
+can do this by hand using `wget` and `gunzip`, say, if prefered.
 
 A common way to use `sloane` is to search for entries matching a
 sequence of consecutive terms:
@@ -30,20 +31,12 @@ sequence of consecutive terms:
 
 At the time of writing this would return
 
-    S A006531 1,1,3,19,183,2371,38703,763099,17648823,468603091,14050842303,
-    N A006531 Semiorders on n elements.
-
-As shown here the default is to return the sequence (S) and the name (N)
-fields. These are the only fields that are available in offline mode. In
-online mode all fields are available. To select among the fields use the
-`-k` option, or, to select all fields, use to `--long` option. The
-following search would show the sequence, name, comments, and formula
-fields:
-
-    sloane -k SNCF --oeis 1,3,19,183,2371,38703
-
-One can also lookup A-numbers or do a free text search; see the
-**EXAMPLES** section.
+    {
+      "trail": ["{1,3,19,183,2371,38703}"],
+      "hops": "A006531",
+      "name": "Semiorders on n elements.",
+      "seq": [1,1,3,19,183,2371,38703,763099,17648823,468603091,...]
+    }
 
 The `--filter` option can be very useful when checking a large number of
 sequences.  In this mode `sloane` expects input in the form returned by
@@ -51,41 +44,14 @@ sequences.  In this mode `sloane` expects input in the form returned by
 the right hand side of the entry read is in the local database, then the
 entry is returned to standard output; if not, it is ignored. This way
 one can quickly filter out the sequences from the input that are in the
-local database. To be concrete, assume that *FILE* contains these
-entries:
-
-    CATALAN(1/(1-2*x)) => {1,2,6,20,70,252,924,3432,12870,48620}
-    CATALANi(1/(1-2*x)) => {1,2,2,0,-4,-8,-8,0,16,32}
-    CONV(1/(1-2*x)) => {1,4,12,32,80,192,448,1024,2304,5120}
-    BIN1(1/(1-2*x)) => {1,-4,13,-40,121,-364,1093,-3280,9841}
-
-Then
-
-    sloane --filter <FILE
-
-returns the subset of the sequences in *FILE* that are in the local
-database. In this case, all but the last one. To also lookup the names of
-those sequences one could run
+local database. To also lookup the names of those sequences one could
+run
 
     sloane --filter <FILE | sloane
 
 If the sequences one wishes to filter are not already in form returned
-by `hops` then one may mold them into that form using `hops --tag`. For
-instanse, if *FILE* consists of
-
-    1,2,6,20,70,252,924,3432,12870,48620
-    1,2,2,0,-4,-8,-8,0,16,32
-    1,4,12,32,80,192,448,1024,2304,5120
-    1,-4,13,-40,121,-364,1093,-3280,9841
-
-Then `hops --tag 1 <FILE` would result in
-
-    TAG000001 => {1,2,6,20,70,252,924,3432,12870,48620}
-    TAG000002 => {1,2,2,0,-4,-8,-8,0,16,32}
-    TAG000003 => {1,4,12,32,80,192,448,1024,2304,5120}
-    TAG000004 => {1,-4,13,-40,121,-364,1093,-3280,9841}
-
-which can be filtered through `sloane` as above.
+by `hops` then one may mold them into that form using `hops --tag`. See
+the **EXAMPLES** section for more usage examples.
 
 # OPTIONS
 
@@ -93,24 +59,11 @@ which can be filtered through `sloane` as above.
 :   Online search; lookup the provided terms in Sloane's On-Line Encyclopedia
     of Integer Sequences (OEIS).
 
--k *KEYS*
-:   Keys of fields to print (default: SN).
-
---long
-:   Long format; print all fields.
-
 -n *N*
 :   Fetch at most this many entries (default: 5).
 
 --all
 :   Fetch all matching entries (equivalent to -n 999999).
-
---monochrome
-:   Do not colorize the output. Useful when piping the output to another
-    program.
-
---json
-:   Output results is JSON format.
 
 --invert
 :   Return sequences *not* in the database (used with `--filter`).
@@ -128,78 +81,66 @@ which can be filtered through `sloane` as above.
 
 Lookup A-numbers:
 
-    $ sloane A000111 A000112
+```
+$ sloane A000111 A000112
+{
+  "hops": "A000111",
+  "name": "Euler or up/down numbers: e.g.f. sec(x) + tan(x)...",
+  "seq": [1,1,1,2,5,16,61,272,1385,7936,50521,353792,2702765,22368256,...]
+}
+{
+  "hops": "A000112",
+  "name": "Number of partially ordered sets (\"posets\") with n unlabeled elements.",
+  "seq": [1,1,2,5,16,63,318,2045,16999,183231,2567284,46749427,...]
+}
+```
     
-    S A000111 1,1,1,2,5,16,61,272,1385,7936,50521,353792,2702765,
-    N A000111 Euler or up/down numbers: e.g.f. sec(x) + tan(x)..
-    
-    S A000112 1,1,2,5,16,63,318,2045,16999,183231,2567284,46749427,
-    N A000112 Number of partially ordered sets ("posets") with n..
-
 Lookup a sequence (limit to at most two results):
 
-    $ sloane -n2 1,1,2,5,15,52,203,877,4140,21147,115975,678570,
-    
-    S A000110 1,1,2,5,15,52,203,877,4140,21147,115975,678570,4213597,
-    N A000110 Bell or exponential numbers: number of ways to partition..
-    
-    S A192128 1,1,2,5,15,52,203,877,4140,21147,115975,678570,4213597,
-    N A192128 Number of set partitions of {1, ..., n} that avoid..
+```
+$ sloane -n2 1,1,2,5,15,52,203,877,4140,21147,115975,678570
+{
+  "trail": ["{1,1,2,5,15,52,203,877,4140,21147,115975,678570}"],
+  "hops": "A000110",
+  "name": "Bell or exponential numbers: number of ways to partition a set of n...",
+  "seq": [1,1,2,5,15,52,203,877,4140,21147,115975,678570,4213597,27644437,...]
+}
+{
+  "trail": ["{1,1,2,5,15,52,203,877,4140,21147,115975,678570}"],
+  "hops": "A192127",
+  "name": "Number of set partitions of {1, ..., n} that avoid 6-nestings.",
+  "seq": [1,1,2,5,15,52,203,877,4140,21147,115975,678570,4213596,27644383,...]
+}
+```
 
 Lookup a sequence generated by **hops**(1):
 
-    $ hops 'y=1+integral(2*y^2-y);laplace(y)' | sloane
+```
+$ hops 'y=1+integral(2*y^2-y);laplace(y)' | sloane
+{
+  "trail":["y=1+integral(2*y^2-y);laplace(y)"],
+  "hops":"A000670",
+  "name":"Fubini numbers: number of preferential arrangements of n labeled ...",
+  "seq":[1,1,3,13,75,541,4683,47293,545835,7087261,102247563,1622632573,...]
+}
+{
+  "trail":["y=1+integral(2*y^2-y);laplace(y)"],
+  "hops":"A034172","name":"Nearest integer to n!/(2*log(2)^(n+1)).",
+  "seq":[1,1,3,13,75,541,4683,47293,545835,7087261,102247563,1622632573,...]
+}
+```
 
-    S A000670 1,1,3,13,75,541,4683,47293,545835,7087261,102247563,
-    N A000670 Fubini numbers: number of preferential arrangements of..
+Fetch the OEIS entry whose A-number is A006531:
 
-    S A034172 1,1,3,13,75,541,4683,47293,545835,7087261,102247563,
-    N A034172 Nearest integer to n!/(2*log(2)^(n+1)).
-
-Show the sequence, name, comments, and formula fields of the sequence
-whose A-number is A006531:
-
-    sloane -k SNCF --oeis id:A006531
+```
+sloane --oeis id:A006531
+```
 
 Return at most 3 results of a free text search:
 
-    sloane -n 3 --oeis "(2+2)-free posets"
-
-`sloane` normally crops long lines to fit the widths of the terminal. If
-this is unwanted, pipe the output through cat or less:
-
-    sloane --long --oeis id:A000110 | less -R
-
-# KEYS
-
-These are the [keys used by the OEIS](http://oeis.org/eishelp2.html).
-
-    I  ID number
-
-    S  1st line of unsigned sequence
-    T  2nd line of unsigned sequence
-    U  3rd line of unsigned sequence
-
-    V  1st line of signed sequence
-    W  2nd line of signed sequence
-    X  3rd line of signed sequence
-
-    N  Name
-    C  Comments
-    D  References
-    H  Links
-    F  Formula
-    e  Examples
-
-    p  Maple program
-    t  Mathematica program
-    o  Program in other language
-
-    Y  Cross-references
-    K  Keywords
-    O  Offset
-    A  Author
-    E  Extensions and errors
+```
+sloane -n 3 --oeis "(2+2)-free posets"
+```
 
 # NOTES
 

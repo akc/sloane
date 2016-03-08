@@ -1,54 +1,69 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveGeneric #-}
 
 -- |
--- Copyright   : Anders Claesson 2015
+-- Copyright   : Anders Claesson 2015, 2016
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 -- License     : BSD-3
 --
 
 module Sloane.Entry
-    ( PackedPrg (..)
-    , PackedEntry (..)
-    , parsePackedEntry
-    , parsePackedEntryErr
+    ( Prg (..)
+    , Name (..)
+    , Trail
+    , Entry (..)
     ) where
 
-import GHC.Generics (Generic)
+import Data.Aeson
 import Data.Maybe
 import Data.ByteString.Char8 (ByteString)
-import qualified Data.ByteString.Char8 as B
-import qualified Data.Attoparsec.ByteString.Char8 as Ch
-import Data.Attoparsec.ByteString.Char8
+import Data.Text.Encoding (encodeUtf8, decodeUtf8)
 import Control.Monad
-#if __GLASGOW_HASKELL__ < 710
-import Control.Applicative
-#endif
-import Sloane.Utils
-import Sloane.OEIS
 
--- | A compact `ByteString` representation of a `Prg`.
-newtype PackedPrg = PPrg ByteString deriving (Eq, Show, Generic)
+newtype Prg = Prg ByteString deriving (Show, Eq)
 
--- | Similary, a packed entry consists of a packed program together with
--- a packed sequence.
-data PackedEntry = PackedEntry
-    { getPackedPrg :: PackedPrg
-    , getPackedSeq :: PackedSeq
-    } deriving (Eq, Show, Generic)
+type Trail = [Prg]
 
-packedEntry :: Parser PackedEntry
-packedEntry =
-    let f w = if B.last w == '=' then return (PPrg (B.init w)) else mzero
-    in PackedEntry <$> (Ch.takeWhile1 (/='>') >>= f)
-                   <*> (char '>' *> packedSeq)
+newtype Name = Name ByteString deriving (Show, Eq)
 
--- | A parser for packed entries.
-parsePackedEntry :: ByteString -> Maybe PackedEntry
-parsePackedEntry = parse_ packedEntry . B.filter (/=' ')
+instance ToJSON Prg where
+    toJSON (Prg bs) = String (decodeUtf8 bs)
 
--- | Like `parsePackedEntry` but throws an error rather than returning
--- `Nothing` in case the parse fails.
-parsePackedEntryErr :: ByteString -> PackedEntry
-parsePackedEntryErr = fromMaybe (error "cannot parse input") . parsePackedEntry
+instance FromJSON Prg where
+    parseJSON (String s) = return $ Prg (encodeUtf8 s)
+    parseJSON _ = mzero
+
+instance ToJSON Name where
+    toJSON (Name bs) = String (decodeUtf8 bs)
+
+instance FromJSON Name where
+    parseJSON (String s) = return $ Name (encodeUtf8 s)
+    parseJSON _ = mzero
+
+-- | An entry consists of a program together with a list of rational
+-- numbers.
+data Entry = Entry
+    { getPrg   :: Prg
+    , getSeq   :: [Integer]
+    , getDens  :: Maybe [Integer]
+    , getName  :: Maybe Name
+    , getTrail :: [Prg]
+    } deriving (Eq, Show)
+
+instance ToJSON Entry where
+    toJSON (Entry prg s dens name trail) =
+        object ([ "hops"         .= toJSON prg
+                , "seq"          .= toJSON s ] ++
+                [ "denominators" .= toJSON dens  | isJust dens ] ++
+                [ "name"         .= toJSON name  | isJust name ] ++
+                [ "trail"        .= toJSON trail | not (null trail) ]
+               )
+
+instance FromJSON Entry where
+    parseJSON (Object v) = do
+        prg   <- v .:  "hops"
+        ns    <- v .:  "seq"
+        dens  <- v .:? "denominators"
+        name  <- v .:? "name"
+        trail <- v .:? "trail"
+        return $ Entry prg ns dens name (fromMaybe [] trail)
+    parseJSON _ = mzero

@@ -1,7 +1,5 @@
 #!/bin/sh
 
-cd /tmp/x
-
 if cd sloane 2>/dev/null
 then
     git fetch
@@ -19,6 +17,7 @@ cabal install --only-dependencies
 # This will give an error if pandoc isn't installed, but that is fine as
 # we only call build to generate dist/build/autogen/cabal_macros.h. Is
 # there some cleaner solution for this?
+cabal configure
 cabal build
 
 ghc --make -O2 -optl-static -fforce-recomp \

@@ -6,10 +6,7 @@
 
 A command line interface to the
 [On-Line Encyclopedia of Integer Sequences](http://oeis.org).
-
-![](demo.gif)
-
-See the [man page](man) for furher uses.
+See the [man page](man) for usage.
 
 ## Install
 
