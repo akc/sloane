@@ -26,15 +26,13 @@ module Sloane.OEIS
     , parseOEISEntries
     -- * Parse sequences
     , shave
-    , parseSeqErr
     , parseIntegerSeq
-    , packedSeq
+    , parseIntegerSeqErr
     , packSeq
     -- * Parse A-numbers and B-numbers
     , aNumInt
     , parseANum
-    , packANum
-    , tag
+--    , packANum
     ) where
 
 import GHC.Generics (Generic)
@@ -55,6 +53,7 @@ import Data.Attoparsec.ByteString.Char8
 import Control.Monad
 import Control.Applicative
 import Sloane.Utils
+import Sloane.Entry
 
 -- | An OEIS key is `Char`.
 type Key  = Char
@@ -204,40 +203,23 @@ parseOEISEntries = fromMaybe [] . parse_ oeisEntries
 -- Parse sequences
 -------------------------------------------------------------------------------
 
-rat :: Parser Rational
-rat = (%) <$> signed decimal <*> ((char '/' *> decimal) <|> return 1)
-
-ratSeq :: Parser [Rational]
-ratSeq = rat `sepBy` char ','
-
 integerSeq :: Parser [Integer]
 integerSeq = signed decimal `sepBy` char ','
-
-parseSeq :: ByteString -> Maybe [Rational]
-parseSeq = parse_ (ratSeq <* endOfInput) . B.filter (/=' ')
-
--- | Parse a sequence of `Rational`s.
-parseSeqErr :: ByteString -> [Rational]
-parseSeqErr = fromMaybe (error "error parsing sequence") . parseSeq
 
 -- | Parse a sequence of `Integer`s.
 parseIntegerSeq :: ByteString -> Maybe [Integer]
 parseIntegerSeq = parse_ (integerSeq <* endOfInput) . B.filter (/=' ')
 
--- | Parser for `PackedSeq`.
-packedSeq :: Parser PackedSeq
-packedSeq = PSeq <$> (char '{' *> Ch.takeWhile (/='}') <* char '}')
+-- | Parse a sequence of `Integer`s or throw an error.
+parseIntegerSeqErr :: ByteString -> [Integer]
+parseIntegerSeqErr = fromMaybe (error "error parsing sequence") . parseIntegerSeq
 
--- | Pack a sequence of `Rational`s into a `PackedSeq`. E.g.
+-- | Pack a sequence of `Integers`s into a `PackedSeq`. E.g.
 --
--- > packSeq [1,1/2,1/3] = PSeq {unPSeq = "1,1/2,1/3"}
+-- > packSeq [1,-1,3] = PSeq {unPSeq = "1,-1,3"}
 --
-packSeq :: [Rational] -> PackedSeq
-packSeq = PSeq . B.intercalate (B.pack ",") . map (B.pack . f)
-  where
-    f r = case (numerator r, denominator r) of
-            (n, 1) -> show n
-            (n, d) -> show n ++ '/':show d
+packSeq :: [Integer] -> PackedSeq
+packSeq = PSeq . B.intercalate (B.pack ",") . map (B.pack . show)
 
 -------------------------------------------------------------------------------
 -- Utility functions
@@ -254,10 +236,6 @@ shave = B.init . B.tail
 aNumInt :: Parser Int
 aNumInt = char 'A' >> decimal
 
--- | Run the `aNumInt` parser.
-parseANum :: ByteString -> Maybe ANum
-parseANum = parse_ (packANum <$> aNumInt)
-
 -- | Pack an A-number given as an `Int` into a wrapped `ByteString`
 -- consistsing of an \'A\' followed by six digits. E.g.
 --
@@ -266,6 +244,6 @@ parseANum = parse_ (packANum <$> aNumInt)
 packANum :: Int -> ANum
 packANum anum = ANum $ B.cons 'A' (pad 6 anum)
 
--- | A parser for tags (B-numbers) as `Int`s.
-tag :: Parser Int
-tag = string "TAG" >> decimal
+-- | Run the `aNumInt` parser.
+parseANum :: ByteString -> Maybe ANum
+parseANum = parse_ (packANum <$> aNumInt)

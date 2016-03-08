@@ -14,6 +14,7 @@ module Main (main) where
 import Data.Aeson
 import Data.Bits (xor)
 import Data.Maybe
+import Data.Ratio
 import Data.Map (Map, (!))
 import qualified Data.Map as M
 import qualified Data.ByteString.Char8 as B
@@ -93,9 +94,9 @@ readInput opts cfg
         sdb <- readSeqDB cfg
         ndb <- readNamesDB cfg
         let parseInp t = fromMaybe (error "cannot parse input")
-                       $  (Right . packSeq . getSeq <$> decodeStrict t)
+                       $  (Right . packSeq . map numerator . getSeq <$> decodeStrict t)
                       <|> (Left <$> parseANum t)
-                      <|> (Right . packSeq . map fromIntegral <$> parseIntegerSeq t)
+                      <|> (Right . packSeq <$> parseIntegerSeq t)
         SearchLocalDB sdb ndb (limit opts) . map parseInp
             <$> case map B.pack (terms opts) of
                   [] -> readStdin
@@ -125,8 +126,8 @@ sloane inp =
           let qas = [ QA q (mkReplies sm nm ks)
                     | (q, ks) <-
                         [ case t of
-                            Right s@(PSeq r) -> (r, grepN maxReplies s sdb)
                             Left (ANum anum) -> (anum, [ANum anum])
+                            Right s@(PSeq r) -> (r, grepN maxReplies s sdb)
                         | t <- ts
                         ]
                     ]
@@ -143,7 +144,7 @@ sloane inp =
           return $ Entries
               [ e | e@(Entry _ s) <- es
               , not (null s)
-              , let t = packSeq s
+              , let t = packSeq (map numerator s)
               , invFlag `xor` (t `isFactorOf` bloom && not (null (grep t db)))
               ]
 
