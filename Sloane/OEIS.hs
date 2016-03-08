@@ -12,7 +12,6 @@ module Sloane.OEIS
     -- * Types
       URL
     , Key
-    , Name
     , ANum (..)
     , PackedSeq (..)
     , OEISEntry (..)
@@ -30,9 +29,7 @@ module Sloane.OEIS
     , parseIntegerSeqErr
     , packSeq
     -- * Parse A-numbers and B-numbers
-    , aNumInt
     , parseANum
---    , packANum
     ) where
 
 import GHC.Generics (Generic)
@@ -58,10 +55,6 @@ import Sloane.Entry
 -- | An OEIS key is `Char`.
 type Key  = Char
 
--- | The name of an OEIS entry is a short description of the
--- sequence. Here represented as a `ByteString`.
-type Name = ByteString
-
 type Row  = (Key, ANum, ByteString)
 
 -- | A URL is currently just a synonym for `String`.
@@ -71,6 +64,13 @@ type URL  = String
 -- number. Here we represent that by a wrapped (7 character)
 -- `ByteString`.
 newtype ANum = ANum {unANum :: ByteString} deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ANum where
+    toJSON (ANum bs) = String (decodeUtf8 bs)
+
+instance FromJSON ANum where
+    parseJSON (String s) = pure $ ANum (encodeUtf8 s)
+    parseJSON _ = mzero
 
 -- | A `PackedSeq` is a wrapped `ByteString`.
 newtype PackedSeq = PSeq {unPSeq :: ByteString} deriving (Eq, Show, Generic)
@@ -82,21 +82,14 @@ instance Monoid PackedSeq where
 instance IsString PackedSeq where
     fromString = PSeq . fromString
 
-data OEISEntry = OEISEntry ANum (Map Key [ByteString]) deriving Show
-
-instance ToJSON ANum where
-    toJSON (ANum bs) = String (decodeUtf8 bs)
-
-instance FromJSON ANum where
-    parseJSON (String s) = pure $ ANum (encodeUtf8 s)
-    parseJSON _ = mzero
-
 instance ToJSON PackedSeq where
     toJSON (PSeq bs) = String (decodeUtf8 bs)
 
 instance FromJSON PackedSeq where
     parseJSON (String s) = pure $ PSeq (encodeUtf8 s)
     parseJSON _ = mzero
+
+data OEISEntry = OEISEntry ANum (Map Key [ByteString]) deriving Show
 
 instance ToJSON OEISEntry where
     toJSON (OEISEntry anum tbl) =
@@ -135,8 +128,8 @@ parseRecords = mapMaybe (parse_ record) . dropHeader . B.lines
 --
 -- > A000108 Catalan numbers: C(n) = binomial(2n,n)/(n+1) = (2n)!/(n!(n+1)!).
 --
-parseNames :: ByteString -> [(ANum, ByteString)]
-parseNames = parseRecords
+parseNames :: ByteString -> [(ANum, Name)]
+parseNames bs = [ (a, Name n) | (a, n) <- parseRecords bs ]
 
 -- | Parse a list of A-number-sequence pairs. It's purpose is to parse
 -- lines of the @stripped@ file. A typical line of that file looks like
@@ -144,8 +137,8 @@ parseNames = parseRecords
 --
 -- > A000108 ,1,1,2,5,14,42,132,429,1430,4862,16796,58786,208012,742900,
 --
-parseStripped :: ByteString -> [(ANum, PackedSeq)]
-parseStripped bs = [ (anum, PSeq (shave s)) | (anum, s) <- parseRecords bs ]
+parseStripped :: ByteString -> [(ANum, [Integer])]
+parseStripped bs = [ (anum, parseIntegerSeqErr (shave s)) | (anum, s) <- parseRecords bs ]
 
 -------------------------------------------------------------------------------
 -- Building the Bloom filter

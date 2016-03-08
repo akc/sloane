@@ -43,8 +43,8 @@ seqsURL = "https://oeis.org/stripped.gz"
 namesURL :: URL
 namesURL = "https://oeis.org/names.gz"
 
-type Query  = B.ByteString
-type Limit  = Int
+type Query = B.ByteString
+type Limit = Int
 
 data QA = QA Query [OEISEntry]
 
@@ -109,10 +109,10 @@ printOutput (Entries es) = mapM_ (BL.putStrLn . encode) es
 printOutput (OEISReplies rs) = mapM_ (BL.putStrLn . encode) rs
 
 -- Construct a list of replies associated with a list of A-numbers.
-mkReplies :: Map ANum PackedSeq -> Map ANum Name -> [ANum] -> [OEISEntry]
+mkReplies :: Map ANum [Integer] -> Map ANum Name -> [ANum] -> [Entry]
 mkReplies s n anums =
-    [ OEISEntry k (M.fromList [('S', [unPSeq (s!k)]), ('N', [n!k])])
-    | k <- anums
+    [ Entry (Prg b) (map fromIntegral (s!k)) (Just (n!k))
+    | k@(ANum b) <- anums
     , M.member k s && M.member k n
     ]
 
@@ -123,15 +123,14 @@ sloane inp =
       SearchLocalDB sdb ndb maxReplies ts -> do
           let sm = M.fromList $ parseStripped (unDB sdb)
           let nm = M.fromList $ parseNames (unDB ndb)
-          let qas = [ QA q (mkReplies sm nm ks)
-                    | (q, ks) <-
-                        [ case t of
-                            Left (ANum anum) -> (anum, [ANum anum])
-                            Right s@(PSeq r) -> (r, grepN maxReplies s sdb)
-                        | t <- ts
-                        ]
-                    ]
-          return $ OEISReplies qas
+          let es = [ mkReplies sm nm ks
+                   | ks <- [ case t of
+                               Left anum -> [anum]
+                               Right s   -> grepN maxReplies s sdb
+                           | t <- ts
+                           ]
+                   ]
+          return $ Entries (concat es)
 
       SearchOEIS lim q -> do
           let kvs = [("n", B.pack (show lim)), ("q", B.pack q), ("fmt", "text")]
@@ -142,7 +141,7 @@ sloane inp =
       FilterSeqs db invFlag es -> do
           let bloom = mkBloomFilter db
           return $ Entries
-              [ e | e@(Entry _ s) <- es
+              [ e | e@(Entry _ s _) <- es
               , not (null s)
               , let t = packSeq (map numerator s)
               , invFlag `xor` (t `isFactorOf` bloom && not (null (grep t db)))

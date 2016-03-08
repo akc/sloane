@@ -9,6 +9,8 @@
 
 module Sloane.Entry
     ( Sequence
+    , Prg (..)
+    , Name (..)
     , Entry (..)
     ) where
 
@@ -20,6 +22,9 @@ import Control.Monad
 import Control.Applicative
 
 newtype Prg = Prg ByteString deriving (Show, Eq)
+
+newtype Name = Name ByteString deriving (Show, Eq)
+
 type Sequence = [Rational]
 
 instance ToJSON Prg where
@@ -29,17 +34,26 @@ instance FromJSON Prg where
     parseJSON (String s) = pure $ Prg (encodeUtf8 s)
     parseJSON _ = mzero
 
+instance ToJSON Name where
+    toJSON (Name bs) = String (decodeUtf8 bs)
+
+instance FromJSON Name where
+    parseJSON (String s) = pure $ Name (encodeUtf8 s)
+    parseJSON _ = mzero
+
 -- | An entry consists of a program together with a list of rational
 -- numbers.
 data Entry = Entry
-    { getPrg :: Prg
-    , getSeq :: Sequence
+    { getPrg  :: Prg
+    , getSeq  :: Sequence
+    , getName :: Maybe Name
     } deriving (Eq, Show)
 
 instance ToJSON Entry where
-    toJSON (Entry prg s) =
+    toJSON (Entry prg s name) =
         object ([ "hops" .= toJSON prg
                 , "nums" .= toJSON (map numerator s)
+                , "name" .= toJSON name
                 ] ++
                 [ "dnos" .= toJSON ds
                 | let ds = map denominator s
@@ -49,10 +63,11 @@ instance ToJSON Entry where
 
 instance FromJSON Entry where
     parseJSON (Object v) = do
-        prg <- v .:  "hops"
-        ns  <- v .:  "nums"
-        mds <- v .:? "dnos"
+        prg  <- v .:  "hops"
+        ns   <- v .:  "nums"
+        mds  <- v .:? "dnos"
+        name <- v .:? "name"
         return $ case mds of
-             Nothing -> Entry prg (map fromIntegral ns)
-             Just ds -> Entry prg (zipWith (%) ns ds)
+             Nothing -> Entry prg (map fromIntegral ns) name
+             Just ds -> Entry prg (zipWith (%) ns ds) name
     parseJSON _ = mzero
