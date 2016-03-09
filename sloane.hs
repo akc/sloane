@@ -14,11 +14,11 @@ module Main (main) where
 import Data.Aeson
 import Data.Bits (xor)
 import Data.Maybe
+import Data.Monoid
 import Data.Map (Map, (!))
 import qualified Data.Map as M
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy.Char8 as BL
-import Data.Text.Encoding (decodeUtf8)
 import Control.Applicative
 import System.Directory
 import System.IO
@@ -42,28 +42,18 @@ seqsURL = "https://oeis.org/stripped.gz"
 namesURL :: URL
 namesURL = "https://oeis.org/names.gz"
 
-type Query = B.ByteString
 type Limit = Int
 
-data QA = QA Query [OEISEntry]
-
-instance ToJSON QA where
-    toJSON (QA q rs) =
-        object [ "query" .= String (decodeUtf8 q)
-               , "reply" .= toJSON rs
-               ]
-
 data Input
-    = SearchLocalDB (DB Sequences) (DB Names) Limit [Either ANum PackedSeq]
+    = SearchLocalDB (DB Sequences) (DB Names) Limit [(Trail, Either ANum PackedSeq)]
     | SearchOEIS Limit String
     | FilterSeqs (DB Sequences) Bool [Entry]
     | UpdateDBs FilePath FilePath FilePath
     | Empty
 
 data Output
-    = OEISReplies [QA]
+    = OEISReplies [OEISEntry]
     | Entries [Entry]
-    | Version String
     | NOP
 
 decodeErr :: B.ByteString -> Entry
@@ -92,27 +82,31 @@ readInput opts cfg
     | otherwise = do
         sdb <- readSeqDB cfg
         ndb <- readNamesDB cfg
-        let parseInp t = fromMaybe (error "cannot parse input")
-                       $  (Right . packSeq . getSeq <$> decodeStrict t)
-                      <|> (Left <$> parseANum t)
-                      <|> (Right . packSeq <$> parseIntegerSeq t)
-        SearchLocalDB sdb ndb (limit opts) . map parseInp
-            <$> case map B.pack (terms opts) of
-                  [] -> readStdin
-                  ts -> return ts
+        inp <- case terms opts of
+                 [] -> readStdin
+                 ts -> return (map B.pack ts)
+        let parseInp t =
+              case decodeStrict t of
+                Just e  -> (getPrg e : getTrail e, Right (packSeq (getSeq e)))
+                Nothing -> case parseIntegerSeq t of
+                             Just s  -> let t = packSeq s
+                                        in ([Prg ("{" <> unPSeq t <> "}")], Right t)
+                             Nothing -> case parseANum t of
+                                          Just a  -> ([Prg (unANum a)], Left a)
+                                          Nothing -> error "cannot parse input"
+        return $ SearchLocalDB sdb ndb (limit opts) (map parseInp inp)
 
 printOutput :: Output -> IO ()
 printOutput NOP = return ()
-printOutput (Version s) = putStrLn $ "sloane " ++ s
 printOutput (Entries es) = mapM_ (BL.putStrLn . encode) es
 printOutput (OEISReplies rs) = mapM_ (BL.putStrLn . encode) rs
 
 -- Construct a list of replies associated with a list of A-numbers.
-mkReplies :: Map ANum [Integer] -> Map ANum Name -> [ANum] -> [Entry]
-mkReplies s n anums =
-    [ Entry (Prg b) (s!k) Nothing (Just (n!k))
-    | k@(ANum b) <- anums
-    , M.member k s && M.member k n
+mkReplies :: Map ANum [Integer] -> Map ANum Name -> [(Trail, ANum)] -> [Entry]
+mkReplies s n tas =
+    [ Entry (Prg b) (s!a) Nothing (Just (n!a)) trail
+    | (trail, a@(ANum b)) <- tas
+    , M.member a s && M.member a n
     ]
 
 sloane :: Input -> IO Output
@@ -122,28 +116,22 @@ sloane inp =
       SearchLocalDB sdb ndb maxReplies ts -> do
           let sm = M.fromList $ parseStripped (unDB sdb)
           let nm = M.fromList $ parseNames (unDB ndb)
-          let es = [ mkReplies sm nm ks
-                   | ks <- [ case t of
-                               Left anum -> [anum]
-                               Right s   -> grepN maxReplies s sdb
-                           | t <- ts
-                           ]
-                   ]
-          return $ Entries (concat es)
+          let anums (trail, Left  a) = [ (trail, a) ]
+              anums (trail, Right s) = [ (trail, a) | a <- grepN maxReplies s sdb ]
+          return $ Entries (mkReplies sm nm . anums =<< ts)
 
       SearchOEIS lim q -> do
           let kvs = [("n", B.pack (show lim)), ("q", B.pack q), ("fmt", "text")]
           replies <- requestPage oeisURL kvs
-          let qas = [QA (B.pack q) (parseOEISEntries replies)]
-          return $ OEISReplies qas
+          return $ OEISReplies (parseOEISEntries replies)
 
       FilterSeqs db invFlag es -> do
           let bloom = mkBloomFilter db
           return $ Entries
-              [ e | e@(Entry _ s _ _) <- es
-              , not (null s)
-              , let t = packSeq s
-              , invFlag `xor` (t `isFactorOf` bloom && not (null (grep t db)))
+              [ e | e <- es
+              , let s = packSeq (getSeq e)
+              , not (B.null (unPSeq s))
+              , invFlag `xor` (s `isFactorOf` bloom && not (null (grep s db)))
               ]
 
       UpdateDBs sloanedir sdbPath ndbPath -> do
@@ -156,7 +144,9 @@ sloane inp =
           download (length msg2) namesURL ndbPath >> putStrLn ""
           return NOP
 
-      Empty -> return $ Version versionString
+      Empty -> do
+          putStrLn $ "sloane " ++ versionString
+          return NOP
 
 -- | Main function and entry point for sloane.
 main :: IO ()

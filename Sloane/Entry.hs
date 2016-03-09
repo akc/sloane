@@ -10,6 +10,7 @@
 module Sloane.Entry
     ( Prg (..)
     , Name (..)
+    , Trail
     , Entry (..)
     ) where
 
@@ -20,6 +21,8 @@ import Control.Monad
 import Control.Applicative
 
 newtype Prg = Prg ByteString deriving (Show, Eq)
+
+type Trail = [Prg]
 
 newtype Name = Name ByteString deriving (Show, Eq)
 
@@ -40,25 +43,28 @@ instance FromJSON Name where
 -- | An entry consists of a program together with a list of rational
 -- numbers.
 data Entry = Entry
-    { getPrg  :: Prg
-    , getSeq  :: [Integer]
-    , getDens :: Maybe [Integer]
-    , getName :: Maybe Name
+    { getPrg   :: Prg
+    , getSeq   :: [Integer]
+    , getDens  :: Maybe [Integer]
+    , getName  :: Maybe Name
+    , getTrail :: [Prg]
     } deriving (Eq, Show)
 
 instance ToJSON Entry where
-    toJSON (Entry prg s dens name) =
-        object ([ "hops" .= toJSON prg
-                , "seq"  .= toJSON s ] ++
-                [ "denominators" .= toJSON dens | dens /= Nothing ] ++
-                [ "name" .= toJSON name | name /= Nothing ]
+    toJSON (Entry prg s dens name trail) =
+        object ([ "hops"         .= toJSON prg
+                , "seq"          .= toJSON s                        ] ++
+                [ "denominators" .= toJSON dens  | dens /= Nothing  ] ++
+                [ "name"         .= toJSON name  | name /= Nothing  ] ++
+                [ "trail"        .= toJSON trail | not (null trail) ]
                )
 
 instance FromJSON Entry where
     parseJSON (Object v) = do
-        prg  <- v .:  "hops"
-        ns   <- v .:  "seq"
-        dens <- v .:? "denominators"
-        name <- v .:? "name"
-        return $ Entry prg ns dens name
+        prg   <- v .:  "hops"
+        ns    <- v .:  "seq"
+        dens  <- v .:? "denominators"
+        name  <- v .:? "name"
+        trail <- v .:  "trail"
+        return $ Entry prg ns dens name trail
     parseJSON _ = mzero
