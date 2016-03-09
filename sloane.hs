@@ -14,7 +14,6 @@ module Main (main) where
 import Data.Aeson
 import Data.Bits (xor)
 import Data.Maybe
-import Data.Ratio
 import Data.Map (Map, (!))
 import qualified Data.Map as M
 import qualified Data.ByteString.Char8 as B
@@ -94,7 +93,7 @@ readInput opts cfg
         sdb <- readSeqDB cfg
         ndb <- readNamesDB cfg
         let parseInp t = fromMaybe (error "cannot parse input")
-                       $  (Right . packSeq . map numerator . getSeq <$> decodeStrict t)
+                       $  (Right . packSeq . getSeq <$> decodeStrict t)
                       <|> (Left <$> parseANum t)
                       <|> (Right . packSeq <$> parseIntegerSeq t)
         SearchLocalDB sdb ndb (limit opts) . map parseInp
@@ -111,7 +110,7 @@ printOutput (OEISReplies rs) = mapM_ (BL.putStrLn . encode) rs
 -- Construct a list of replies associated with a list of A-numbers.
 mkReplies :: Map ANum [Integer] -> Map ANum Name -> [ANum] -> [Entry]
 mkReplies s n anums =
-    [ Entry (Prg b) (map fromIntegral (s!k)) (Just (n!k))
+    [ Entry (Prg b) (s!k) Nothing (Just (n!k))
     | k@(ANum b) <- anums
     , M.member k s && M.member k n
     ]
@@ -141,9 +140,9 @@ sloane inp =
       FilterSeqs db invFlag es -> do
           let bloom = mkBloomFilter db
           return $ Entries
-              [ e | e@(Entry _ s _) <- es
+              [ e | e@(Entry _ s _ _) <- es
               , not (null s)
-              , let t = packSeq (map numerator s)
+              , let t = packSeq s
               , invFlag `xor` (t `isFactorOf` bloom && not (null (grep t db)))
               ]
 

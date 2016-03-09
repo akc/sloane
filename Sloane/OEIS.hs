@@ -36,7 +36,6 @@ import GHC.Generics (Generic)
 import Data.Maybe
 import Data.Monoid
 import Data.String
-import Data.Ratio
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.ByteString.Char8 (ByteString)
@@ -45,7 +44,6 @@ import qualified Data.Text as T
 import Data.Text.Encoding (encodeUtf8, decodeUtf8)
 import Data.Aeson
 import qualified Data.Attoparsec.ByteString as A
-import qualified Data.Attoparsec.ByteString.Char8 as Ch
 import Data.Attoparsec.ByteString.Char8
 import Control.Monad
 import Control.Applicative

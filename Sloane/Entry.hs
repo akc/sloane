@@ -8,13 +8,11 @@
 --
 
 module Sloane.Entry
-    ( Sequence
-    , Prg (..)
+    ( Prg (..)
     , Name (..)
     , Entry (..)
     ) where
 
-import Data.Ratio
 import Data.Aeson
 import Data.ByteString.Char8 (ByteString)
 import Data.Text.Encoding (encodeUtf8, decodeUtf8)
@@ -24,8 +22,6 @@ import Control.Applicative
 newtype Prg = Prg ByteString deriving (Show, Eq)
 
 newtype Name = Name ByteString deriving (Show, Eq)
-
-type Sequence = [Rational]
 
 instance ToJSON Prg where
     toJSON (Prg bs) = String (decodeUtf8 bs)
@@ -45,29 +41,24 @@ instance FromJSON Name where
 -- numbers.
 data Entry = Entry
     { getPrg  :: Prg
-    , getSeq  :: Sequence
+    , getSeq  :: [Integer]
+    , getDens :: Maybe [Integer]
     , getName :: Maybe Name
     } deriving (Eq, Show)
 
 instance ToJSON Entry where
-    toJSON (Entry prg s name) =
+    toJSON (Entry prg s dens name) =
         object ([ "hops" .= toJSON prg
-                , "nums" .= toJSON (map numerator s)
-                , "name" .= toJSON name
-                ] ++
-                [ "dnos" .= toJSON ds
-                | let ds = map denominator s
-                , any (/=1) ds  -- For terseness only include denominators if
-                                -- at least one of them isn't 1
-                ])
+                , "seq"  .= toJSON s ] ++
+                [ "denominators" .= toJSON dens | dens /= Nothing ] ++
+                [ "name" .= toJSON name | name /= Nothing ]
+               )
 
 instance FromJSON Entry where
     parseJSON (Object v) = do
         prg  <- v .:  "hops"
-        ns   <- v .:  "nums"
-        mds  <- v .:? "dnos"
+        ns   <- v .:  "seq"
+        dens <- v .:? "denominators"
         name <- v .:? "name"
-        return $ case mds of
-             Nothing -> Entry prg (map fromIntegral ns) name
-             Just ds -> Entry prg (zipWith (%) ns ds) name
+        return $ Entry prg ns dens name
     parseJSON _ = mzero
