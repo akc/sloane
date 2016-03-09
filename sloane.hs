@@ -31,7 +31,7 @@ import Sloane.Bloom
 import Sloane.DB
 
 versionString :: String
-versionString = "4.2.0"
+versionString = "5.0.0"
 
 oeisURL :: URL
 oeisURL = "https://oeis.org/search"

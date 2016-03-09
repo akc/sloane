@@ -1,5 +1,5 @@
 ---
-title: SLOANE(1) User Manual | Version 4.2.0
+title: SLOANE(1) User Manual | Version 5.0.0
 date: 28 Dec 2015
 ---
 
