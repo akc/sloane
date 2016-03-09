@@ -1,5 +1,5 @@
 -- |
--- Copyright   : Anders Claesson 2015
+-- Copyright   : Anders Claesson 2015, 2016
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 -- License     : BSD-3
 --
@@ -13,7 +13,6 @@ module Sloane.Options
     ) where
 
 import Options.Applicative
-import Sloane.OEIS
 
 -- | A palette is either colorful or monochrome.
 data Palette = Colorful | Monochrome deriving (Eq, Enum, Show, Read)
@@ -28,19 +27,11 @@ data Options = Options
     {
     -- | Search oeis.org.
       oeis           :: Bool
-    -- | Print all fields?
-    , longFormat     :: Bool
-    -- | Keys of fields to print.
-    , keys           :: String
     -- | Fetch at most this many entries.
     , limit          :: Int
     -- | Fetch all entries (that match).
     , limitless      :: Bool
-    -- | Should we colorize the output?
-    , palette        :: Palette
     -- | Filter out sequences in local DB.
-    , tojson         :: Bool
-    -- | Return sequences NOT in DB
     , filtr          :: Bool
     -- | Return sequences NOT in DB
     , invert         :: Bool
@@ -48,7 +39,7 @@ data Options = Options
     , update         :: Bool
     -- | Show version info
     , version        :: Bool
-    -- Search terms or programs
+    -- | Search terms or hops entries
     , terms          :: [String]
     }
 
@@ -59,14 +50,6 @@ optionsParser =
     <$> switch
         ( long "oeis"
        <> help "Search oeis.org" )
-    <*> switch
-        ( long "long"
-       <> help "Long format; print all fields" )
-    <*> strOption
-        ( short 'k'
-       <> metavar "KEYS"
-       <> value "SN"
-       <> help "Keys of fields to print [default: SN]" )
     <*> option auto
         ( short 'n'
        <> metavar "N"
@@ -75,12 +58,6 @@ optionsParser =
     <*> switch
         ( long "all"
        <> help "Fetch all matching entries (equivalent to -n 999999)" )
-    <*> (toEnum . fromEnum <$> switch
-        ( long "monochrome"
-       <> help "Do not colorize the output" ) )
-    <*> switch
-        ( long "json"
-       <> help "Return results is JSON format" )
     <*> switch
         ( long "filter"
        <> help ("Read sequences from stdin and return"
@@ -98,8 +75,6 @@ optionsParser =
 
 -- | Run the command line options parser (above).
 getOptions :: IO Options
-getOptions = updateOpts <$> execParser (info optionsParser fullDesc)
+getOptions = updateLimit <$> execParser (info optionsParser fullDesc)
   where
-    updateOpts = updateLimit . updateKeys
-    updateKeys  opts = if longFormat opts then opts {keys = oeisKeys} else opts
-    updateLimit opts = if limitless  opts then opts {limit = 999999}  else opts
+    updateLimit opts = if limitless opts then opts {limit = 999999} else opts
