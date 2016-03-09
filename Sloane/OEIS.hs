@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 -- |
--- Copyright   : Anders Claesson 2015
+-- Copyright   : Anders Claesson 2015, 2016
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 -- License     : BSD-3
 --
@@ -11,7 +11,6 @@ module Sloane.OEIS
     (
     -- * Types
       URL
-    , Key
     , ANum (..)
     , PackedSeq (..)
     , OEISEntry (..)
@@ -21,12 +20,10 @@ module Sloane.OEIS
     , parseTermsErr
     , parseTermsOfRecords
     -- * Parse replies from oeis.org
-    , oeisKeys
     , parseOEISEntries
     -- * Parse sequences
     , shave
     , parseIntegerSeq
-    , parseIntegerSeqErr
     , packSeq
     -- * Parse A-numbers and B-numbers
     , parseANum
@@ -51,12 +48,12 @@ import Sloane.Utils
 import Sloane.Entry
 
 -- | An OEIS key is `Char`.
-type Key  = Char
+type Key = Char
 
-type Row  = (Key, ANum, ByteString)
+type Row = (Key, ANum, ByteString)
 
 -- | A URL is currently just a synonym for `String`.
-type URL  = String
+type URL = String
 
 -- | An A-number is the character \'A\' followed by a six digit
 -- number. Here we represent that by a wrapped (7 character)
