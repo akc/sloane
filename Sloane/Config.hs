@@ -1,5 +1,5 @@
 -- |
--- Copyright   : Anders Claesson 2014-2015
+-- Copyright   : Anders Claesson 2014-2016
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 -- License     : BSD-3
 --
@@ -10,7 +10,6 @@ module Sloane.Config
     , getConfig
     ) where
 
-import System.Console.Terminal.Size (width, size)
 import System.FilePath ((</>))
 import System.Directory
 
@@ -25,19 +24,15 @@ data Config = Config
     , seqDBPath   :: FilePath
     -- | Path to 'names' file.
     , namesDBPath :: FilePath
-    -- | The width of the terminal.
-    , termWidth   :: Int
     }
 
 -- | Get configuration.
 getConfig :: IO Config
 getConfig = do
-    w <- maybe maxBound width `fmap` size
     h <- getHomeDirectory
     let c = Config { home        = h
                    , sloaneDir   = h </> ".oeis-data"
                    , seqDBPath   = sloaneDir c </> "stripped"
                    , namesDBPath = sloaneDir c </> "names"
-                   , termWidth   = w
                    }
     return c

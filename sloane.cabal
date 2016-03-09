@@ -49,7 +49,6 @@ Executable sloane
                        http-types >=0.8,
                        optparse-applicative >=0.10,
                        stringsearch >=0.3,
-                       terminal-size >=0.2,
                        text >=0.11,
                        transformers >=0.3,
                        resourcet >=1.1
