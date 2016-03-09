@@ -9,7 +9,7 @@
 --
 
 module Sloane.DB
-    ( DB (..), Sequences, Names
+    ( DB (..), Seqs, Names
     , readSeqDB
     , readNamesDB
     , grepN
@@ -27,7 +27,7 @@ import Sloane.OEIS
 import Sloane.Config
 
 -- | An empty data declaration used with the phantom `DB` data type.
-data Sequences
+data Seqs
 
 -- | An empty data declaration used with the phantom `DB` data type.
 data Names
@@ -42,7 +42,7 @@ readDB fpath = doesFileExist fpath >>= \b ->
          else error "No local database; run 'sloane --update' first."
 
 -- | Read the sequence DB (derived from \"stripped.gz\").
-readSeqDB :: Config -> IO (DB Sequences)
+readSeqDB :: Config -> IO (DB Seqs)
 readSeqDB = readDB . seqDBPath
 
 -- | Read the names DB (derived from \"names.gz\").
@@ -51,7 +51,7 @@ readNamesDB = readDB . namesDBPath
 
 -- | Return all A-numbers whose associated sequence contains a given
 -- sequence as a factor.
-grep :: PackedSeq -> DB Sequences -> [ANum]
+grep :: PackedSeq -> DB Seqs -> [ANum]
 grep (PSeq p) (DB bs) = mapMaybe locateANum (S.indices q bs)
   where
     q = B.snoc (B.cons ',' p) ','
@@ -63,5 +63,5 @@ grep (PSeq p) (DB bs) = mapMaybe locateANum (S.indices q bs)
         ]
 
 -- | Similar to `grep` but return at most 'n' unique hits.
-grepN :: Int -> PackedSeq -> DB Sequences -> [ANum]
+grepN :: Int -> PackedSeq -> DB Seqs -> [ANum]
 grepN n q db = Prelude.take n $ map head $ group (grep q db)

@@ -20,7 +20,7 @@ newtype T9 = T9 ( ByteString, ByteString, ByteString
                 , ByteString, ByteString, ByteString
                 , ByteString, ByteString, ByteString )
 
-type BlF = Bloom T9
+type BF = Bloom T9
 
 instance Hashable T9 where
     hashIO32 (T9 (a,b,c,d,e,f,g,h,i)) salt =
@@ -38,7 +38,7 @@ ninegrams xs = map T9 $ zip9 xs (drop 1 xs) (drop 2 xs) (drop 3 xs) (drop 4 xs)
 
 -- | Make a Bloom filter of all nine integer segments of all sequences
 -- in the given data base.
-mkBloomFilter :: DB Sequences -> BlF
+mkBloomFilter :: DB Seqs -> BF
 mkBloomFilter (DB db) = F.fromList (cheapHashes numHashes) numBits ts
   where
     ts = ninegrams (parseTermsOfRecords db)
@@ -48,5 +48,5 @@ mkBloomFilter (DB db) = F.fromList (cheapHashes numHashes) numBits ts
 -- | Are all the nine element factors of the given (packed) sequence
 -- members of the Bloom filter. May give a false positive answer, but
 -- never a false negative answer.
-isFactorOf :: PackedSeq -> BlF -> Bool
+isFactorOf :: PackedSeq -> BF -> Bool
 isFactorOf (PSeq s) bf = all (`F.elem` bf) $ ninegrams (parseTermsErr s)

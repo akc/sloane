@@ -45,9 +45,9 @@ namesURL = "https://oeis.org/names.gz"
 type Limit = Int
 
 data Input
-    = SearchLocalDB (DB Sequences) (DB Names) Limit [(Trail, Either ANum PackedSeq)]
+    = SearchLocalDB (DB Seqs) (DB Names) Limit [(Trail, Either ANum PackedSeq)]
     | SearchOEIS Limit String
-    | FilterSeqs (DB Sequences) Bool [Entry]
+    | FilterSeqs (DB Seqs) Bool [Entry]
     | UpdateDBs FilePath FilePath FilePath
     | Empty
 
