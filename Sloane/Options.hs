@@ -6,21 +6,11 @@
 -- Command line options for sloane.
 
 module Sloane.Options
-    ( Palette
-    , monochrome
-    , Options (..)
+    ( Options (..)
     , getOptions
     ) where
 
 import Options.Applicative
-
--- | A palette is either colorful or monochrome.
-data Palette = Colorful | Monochrome deriving (Eq, Enum, Show, Read)
-
--- | Is the palette monochrome?
-monochrome :: Palette -> Bool
-monochrome Monochrome = True
-monochrome Colorful   = False
 
 -- | Command line options:
 data Options = Options

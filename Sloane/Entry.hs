@@ -1,8 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveGeneric #-}
 
 -- |
--- Copyright   : Anders Claesson 2015
+-- Copyright   : Anders Claesson 2015, 2016
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 -- License     : BSD-3
 --
@@ -15,6 +14,7 @@ module Sloane.Entry
     ) where
 
 import Data.Aeson
+import Data.Maybe
 import Data.ByteString.Char8 (ByteString)
 import Data.Text.Encoding (encodeUtf8, decodeUtf8)
 import Control.Monad
@@ -53,9 +53,9 @@ data Entry = Entry
 instance ToJSON Entry where
     toJSON (Entry prg s dens name trail) =
         object ([ "hops"         .= toJSON prg
-                , "seq"          .= toJSON s                        ] ++
-                [ "denominators" .= toJSON dens  | dens /= Nothing  ] ++
-                [ "name"         .= toJSON name  | name /= Nothing  ] ++
+                , "seq"          .= toJSON s ] ++
+                [ "denominators" .= toJSON dens  | isJust dens ] ++
+                [ "name"         .= toJSON name  | isJust name ] ++
                 [ "trail"        .= toJSON trail | not (null trail) ]
                )
 
