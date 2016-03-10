@@ -18,7 +18,6 @@ import Data.Maybe
 import Data.ByteString.Char8 (ByteString)
 import Data.Text.Encoding (encodeUtf8, decodeUtf8)
 import Control.Monad
-import Control.Applicative
 
 newtype Prg = Prg ByteString deriving (Show, Eq)
 
