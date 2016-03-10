@@ -18,7 +18,6 @@ import Data.Maybe
 import Data.ByteString.Char8 (ByteString)
 import Data.Text.Encoding (encodeUtf8, decodeUtf8)
 import Control.Monad
-import Control.Applicative
 
 newtype Prg = Prg ByteString deriving (Show, Eq)
 
@@ -30,14 +29,14 @@ instance ToJSON Prg where
     toJSON (Prg bs) = String (decodeUtf8 bs)
 
 instance FromJSON Prg where
-    parseJSON (String s) = pure $ Prg (encodeUtf8 s)
+    parseJSON (String s) = return $ Prg (encodeUtf8 s)
     parseJSON _ = mzero
 
 instance ToJSON Name where
     toJSON (Name bs) = String (decodeUtf8 bs)
 
 instance FromJSON Name where
-    parseJSON (String s) = pure $ Name (encodeUtf8 s)
+    parseJSON (String s) = return $ Name (encodeUtf8 s)
     parseJSON _ = mzero
 
 -- | An entry consists of a program together with a list of rational
