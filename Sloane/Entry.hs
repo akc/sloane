@@ -65,6 +65,6 @@ instance FromJSON Entry where
         ns    <- v .:  "seq"
         dens  <- v .:? "denominators"
         name  <- v .:? "name"
-        trail <- v .:  "trail"
-        return $ Entry prg ns dens name trail
+        trail <- v .:? "trail"
+        return $ Entry prg ns dens name (fromMaybe [] trail)
     parseJSON _ = mzero

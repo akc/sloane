@@ -92,7 +92,7 @@ readInput opts cfg
                              Just s  -> let t = packSeq s
                                         in ([Prg ("{" <> unPSeq t <> "}")], Right t)
                              Nothing -> case parseANum t of
-                                          Just a  -> ([Prg (unANum a)], Left a)
+                                          Just a  -> ([], Left a)
                                           Nothing -> error "cannot parse input"
         return $ SearchLocalDB sdb ndb (limit opts) (map parseInp inp)
 
