@@ -89,8 +89,8 @@ readInput opts cfg
               case decodeStrict t of
                 Just e  -> (getPrg e : getTrail e, Right (packSeq (getSeq e)))
                 Nothing -> case parseIntegerSeq t of
-                             Just s  -> let t = packSeq s
-                                        in ([Prg ("{" <> unPSeq t <> "}")], Right t)
+                             Just s  -> let s' = packSeq s
+                                        in ([Prg ("{" <> unPSeq s' <> "}")], Right s')
                              Nothing -> case parseANum t of
                                           Just a  -> ([], Left a)
                                           Nothing -> error "cannot parse input"
