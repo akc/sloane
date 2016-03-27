@@ -1,6 +1,6 @@
 ---
 title: SLOANE(1) User Manual | Version 5.0.0
-date: 22 March 2016
+date: 27 March 2016
 ---
 
 # NAME
