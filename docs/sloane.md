@@ -65,6 +65,11 @@ the **EXAMPLES** section for more usage examples.
 --all
 :   Fetch all matching entries (equivalent to -n 999999).
 
+--filter
+:   Filter out those sequences from standard input that are in the local
+    database. The input is expected to be in the form returned by
+    **hops**(1).
+
 --invert
 :   Return sequences *not* in the database (used with `--filter`).
 
