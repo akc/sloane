@@ -10,6 +10,7 @@ module Sloane.Options
     , getOptions
     ) where
 
+import Data.Monoid
 import Options.Applicative
 
 -- | Command line options:

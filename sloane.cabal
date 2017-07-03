@@ -15,6 +15,7 @@ Build-type:          Custom
 Extra-Source-Files:  README.md sloane.1
 
 Cabal-version:       >=1.9.2
+Tested-With:         GHC == 8.0.2
 
 source-repository head
   type:                git
@@ -37,7 +38,7 @@ Executable sloane
   Build-depends:       aeson >=0.8,
                        ansi-terminal >=0.6,
                        attoparsec >=0.11,
-                       base >=4 && <5,
+                       base >=4.8 && <5,
                        bloomfilter >=2.0,
                        bytestring >=0.10,
                        conduit >=1,

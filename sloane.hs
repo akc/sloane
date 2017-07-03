@@ -19,7 +19,6 @@ import Data.Map (Map, (!))
 import qualified Data.Map as M
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy.Char8 as BL
-import Control.Applicative
 import System.Directory
 import System.IO
 import Sloane.OEIS
