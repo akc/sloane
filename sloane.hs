@@ -11,7 +11,7 @@
 
 module Main (main) where
 
-import Data.Aeson
+import Data.Aeson (decodeStrict, encode)
 import Data.Bits (xor)
 import Data.Maybe
 import Data.Monoid
