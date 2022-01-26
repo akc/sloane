@@ -4,7 +4,7 @@
 {-# LANGUAGE PolyKinds #-}
 
 -- |
--- Copyright   : Anders Claesson 2012-2016
+-- Copyright   : Anders Claesson
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 -- License     : BSD-3
 --
@@ -14,7 +14,6 @@ module Main (main) where
 import Data.Aeson (decodeStrict, encode)
 import Data.Bits (xor)
 import Data.Maybe
-import Data.Monoid
 import Data.Map (Map, (!))
 import qualified Data.Map as M
 import qualified Data.ByteString.Char8 as B
@@ -47,7 +46,7 @@ data Input
     = SearchLocalDB (DB Seqs) (DB Names) Limit [(Trail, Either ANum PackedSeq)]
     | SearchOEIS Limit String
     | FilterSeqs (DB Seqs) Bool [Entry]
-    | UpdateDBs FilePath FilePath FilePath
+    | UpdateDBs FilePath
     | Empty
 
 data Output
@@ -69,7 +68,7 @@ readInput opts cfg
     | version opts = return Empty
 
     | update opts =
-        return $ UpdateDBs (sloaneDir cfg) (seqDBPath cfg) (namesDBPath cfg)
+        return $ UpdateDBs (sloaneDir cfg)
 
     | filtr opts = do
         db <- readSeqDB cfg
@@ -133,14 +132,15 @@ sloane inp =
               , invFlag `xor` (s `isFactorOf` bloom && not (null (grep s db)))
               ]
 
-      UpdateDBs sloanedir sdbPath ndbPath -> do
+      UpdateDBs sloanedir -> do
           createDirectoryIfMissing False sloanedir
-          let msg1 = "Downloading " ++ seqsURL ++ ": "
-          let msg2 = "Downloading " ++ namesURL ++ ": "
-          putStr msg1 >> hFlush stdout
-          download (length msg1) seqsURL sdbPath >> putStrLn ""
-          putStr msg2 >> hFlush stdout
-          download (length msg2) namesURL ndbPath >> putStrLn ""
+          putStrLn "# You have download two files manually:"
+          putStrLn $ "cd " ++ sloanedir
+          putStrLn $ "wget " ++ seqsURL
+          putStrLn $ "wget " ++ namesURL
+          putStrLn "gunzip names.gz stripped.gz"
+          putStrLn "cd -"
+          hFlush stdout
           return NOP
 
       Empty -> do

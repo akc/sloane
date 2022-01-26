@@ -3,7 +3,7 @@
 {-# LANGUAGE PolyKinds #-}
 
 -- |
--- Copyright   : Anders Claesson 2015
+-- Copyright   : Anders Claesson
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 -- License     : BSD-3
 --
@@ -16,7 +16,6 @@ module Sloane.DB
     , grep
     ) where
 
-import Control.Applicative
 import Data.Maybe
 import Data.List
 import Data.ByteString (ByteString)

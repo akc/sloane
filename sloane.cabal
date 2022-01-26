@@ -1,5 +1,5 @@
 Name:                sloane
-Version:             5.0.1
+Version:             5.0.2
 Synopsis:            A command line interface to Sloane's OEIS.
 
 Description:         A command line interface to Sloane's On-Line Encyclopedia of
@@ -15,7 +15,6 @@ Build-type:          Custom
 Extra-Source-Files:  README.md sloane.1
 
 Cabal-version:       >=1.9.2
-Tested-With:         GHC == 8.0.2
 
 source-repository head
   type:                git
@@ -36,13 +35,10 @@ Executable sloane
   ghc-options:         -Wall -fno-warn-unused-do-bind -fno-warn-missing-signatures
 
   Build-depends:       aeson >=0.8,
-                       ansi-terminal >=0.6,
                        attoparsec >=0.11,
                        base >=4.8 && <5,
                        bloomfilter >=2.0,
                        bytestring >=0.10,
-                       conduit >=1,
-                       conduit-extra >=1,
                        containers >=0.5,
                        directory >=1.2,
                        filepath >=1.3,

@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 -- |
--- Copyright   : Anders Claesson 2015, 2016
+-- Copyright   : Anders Claesson
 -- Maintainer  : Anders Claesson <anders.claesson@gmail.com>
 -- License     : BSD-3
 --
@@ -31,7 +31,6 @@ module Sloane.OEIS
 
 import GHC.Generics (Generic)
 import Data.Maybe
-import Data.Monoid
 import Data.String
 import Data.Map (Map)
 import qualified Data.Map as M
@@ -70,9 +69,11 @@ instance FromJSON ANum where
 -- | A `PackedSeq` is a wrapped `ByteString`.
 newtype PackedSeq = PSeq {unPSeq :: ByteString} deriving (Eq, Show, Generic)
 
+instance Semigroup PackedSeq where
+    (<>) (PSeq x) (PSeq y) = PSeq (mappend x y)
+
 instance Monoid PackedSeq where
     mempty = PSeq mempty
-    mappend (PSeq x) (PSeq y) = PSeq (mappend x y)
 
 instance IsString PackedSeq where
     fromString = PSeq . fromString
